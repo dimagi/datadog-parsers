@@ -17,3 +17,12 @@ def sanitize_url(url):
     # Remove URL params
     url = re.sub(r'\?[^ ]*', '', url)
     return url
+
+
+def sanitize_couch_url(url):
+    url = re.sub(r'[0-9a-f]{32}', '{}'.format(WILDCARD), url)
+
+    # Removes dashed uuids
+    url = re.sub(r'[-0-9a-f]{36}', '{}'.format(WILDCARD), url)
+
+    return url

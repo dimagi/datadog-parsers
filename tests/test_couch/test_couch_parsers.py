@@ -19,7 +19,7 @@ class TestCouchLogParser(unittest.TestCase):
         self.assertEqual(attrs['metric_type'], 'gauge')
         self.assertEqual(attrs['url'], '/a/*/receiver/*/')
         self.assertEqual(attrs['domain'], 'mvp-pampaida')
-        self.assertEqual(attrs['couch_url'], 'd3abf611f2acdc7b4c32f7ebf4982a88')
+        self.assertEqual(attrs['couch_url'], '*')
         self.assertEqual(attrs['status_code'], 'None')
         self.assertEqual(attrs['http_method'], 'PUT')
 

@@ -1,7 +1,7 @@
 import collections
 import time
 from datetime import datetime
-from shared.utils import sanitize_url
+from shared.utils import sanitize_url, sanitize_couch_url
 
 """
 Sample log line:
@@ -42,6 +42,7 @@ def _parse_line(line):
     domain = domain[2:-1]
 
     url = sanitize_url(url)
+    couch_url = sanitize_couch_url(couch_url)
 
     hours, minutes, seconds = request_time.split(':')
     request_seconds = float(seconds) + (60 * float(minutes)) + (60 * 60 * float(hours))
