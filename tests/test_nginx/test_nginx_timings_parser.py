@@ -24,6 +24,7 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_borked_log_line(self):
         self.assertIsNone(parse_nginx_timings(logging, BORKED))
@@ -47,3 +48,8 @@ class TestNginxTimingsParser(unittest.TestCase):
     def test_apdex_parser_unsatisfied(self):
         metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, UNSATISFIED)
         self.assertEqual(apdex_score, 0)
+
+    def test_nginx_counter(self):
+        metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, SIMPLE)
+        self.assertEqual(count, 1)
+        self.assertEqual(attrs['domain'], 'uth-rhd')
