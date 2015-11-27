@@ -84,7 +84,7 @@ def parse_nginx_counter(logger, line):
     request_time = float(request_time.strip())
 
     # Return the output as a tuple
-    return ('nginx.timings', timestamp, 1, {
+    return ('nginx.requests', timestamp, 1, {
         'metric_type': 'counter',
         'url': url,
         'status_code': status_code,
