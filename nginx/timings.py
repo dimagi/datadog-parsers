@@ -11,7 +11,7 @@ def parse_nginx_apdex(logger, line):
         return None
 
     try:
-        timestamp, http_method, url, status_code, request_time = _parse_line(line)
+        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
     except Exception:
         logger.exception('Failed to parse log line')
         return None
@@ -37,6 +37,7 @@ def parse_nginx_apdex(logger, line):
         'url': url,
         'status_code': status_code,
         'http_method': http_method,
+        'domain': domain,
     })
 
 
@@ -45,7 +46,7 @@ def parse_nginx_timings(logger, line):
         return None
 
     try:
-        timestamp, http_method, url, status_code, request_time = _parse_line(line)
+        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
     except Exception:
         logger.exception('Failed to parse log line')
         return None
@@ -62,6 +63,33 @@ def parse_nginx_timings(logger, line):
         'url': url,
         'status_code': status_code,
         'http_method': http_method,
+        'domain': domain,
+    })
+
+
+def parse_nginx_counter(logger, line):
+    if not line:
+        return None
+
+    try:
+        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
+    except Exception:
+        logger.exception('Failed to parse log line')
+        return None
+
+    if _should_skip_log(url):
+        return None
+
+    # Convert the metric value into a float
+    request_time = float(request_time.strip())
+
+    # Return the output as a tuple
+    return ('nginx.timings', timestamp, 1, {
+        'metric_type': 'counter',
+        'url': url,
+        'status_code': status_code,
+        'http_method': http_method,
+        'domain': domain,
     })
 
 
@@ -78,8 +106,9 @@ def _parse_line(line):
     _, _, http_method, url, http_protocol, status_code, request_time = line.split()
 
     timestamp = time.mktime(date.timetuple())
+    domain = _extract_domain(url)
     url = _sanitize_url(url)
-    return timestamp, http_method, url, status_code, request_time
+    return timestamp, http_method, url, status_code, request_time, domain
 
 
 def _sanitize_url(url):
@@ -96,3 +125,8 @@ def _sanitize_url(url):
     # Remove URL params
     url = re.sub(r'\?[^ ]*', '', url)
     return url
+
+
+def _extract_domain(url):
+    match = re.search(r'/a/(?P<domain>[0-9a-z-]+)', url)
+    return match.group('domain')
