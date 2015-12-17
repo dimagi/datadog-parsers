@@ -14,7 +14,7 @@ class TestCouchLogParser(unittest.TestCase):
         metric_name, timestamp, request_time, attrs = parse_couch_logs(logging, SIMPLE)
 
         self.assertEqual(metric_name, 'couch.timings')
-        self.assertEqual(timestamp, 1446330723.0)
+        self.assertEqual(timestamp, 1446309123.0)
         self.assertEqual(request_time, 0.191515)
         self.assertEqual(attrs['metric_type'], 'gauge')
         self.assertEqual(attrs['url'], '/a/*/receiver/*/')

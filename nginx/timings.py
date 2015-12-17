@@ -83,14 +83,26 @@ def parse_nginx_counter(logger, line):
     # Convert the metric value into a float
     request_time = float(request_time.strip())
 
+    url_group = _get_url_group(url)
+
     # Return the output as a tuple
     return ('nginx.requests', timestamp, 1, {
         'metric_type': 'counter',
+        'url_group': url_group,
         'url': url,
         'status_code': status_code,
         'http_method': http_method,
         'domain': domain,
     })
+
+
+def _get_url_group(url):
+    default = 'other'
+    if url.startswith('/a/' + WILDCARD):
+        parts = url.split('/')
+        return parts[3] if len(parts) >= 4 else default
+
+    return default
 
 
 def _should_skip_log(url):
