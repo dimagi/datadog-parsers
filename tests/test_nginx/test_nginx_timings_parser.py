@@ -19,7 +19,7 @@ class TestNginxTimingsParser(unittest.TestCase):
         metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE)
 
         self.assertEqual(metric_name, 'nginx.timings')
-        self.assertEqual(timestamp, 1446059894.0)
+        self.assertEqual(timestamp, 1446038294.0)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
         self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
