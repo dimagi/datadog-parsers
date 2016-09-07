@@ -11,6 +11,7 @@ UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
 SKIPPED = '[28/Oct/2015:15:18:14 +0000] GET /static/myawesomejsfile.js HTTP/1.1 200 0.242'
 ID_NORMALIZE = '[28/Oct/2015:15:18:14 +0000] GET /a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/ HTTP/1.1 200 0.242'
+FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1.1 200 19.330'
 
 
 class TestNginxTimingsParser(unittest.TestCase):
@@ -79,3 +80,5 @@ class TestNginxTimingsParser(unittest.TestCase):
         group = _get_url_group(url)
         self.assertEqual(expected, group)
 
+    def test_nginx_formplayer(self):
+        self.assertIsNotNone(parse_nginx_timings(logging, FORMPLAYER))

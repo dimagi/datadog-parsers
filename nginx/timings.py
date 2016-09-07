@@ -141,4 +141,6 @@ def _sanitize_url(url):
 
 def _extract_domain(url):
     match = re.search(r'/a/(?P<domain>[0-9a-z-]+)', url)
+    if not match:
+        return ''
     return match.group('domain')
