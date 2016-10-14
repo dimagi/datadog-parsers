@@ -32,7 +32,12 @@ def parse_couch_logs(logger, line):
 
 
 def _parse_line(line):
-    date1, date2, domain, url, http_method, status_code, couch_url, request_time = line.split()
+    pieces = line.split()
+    if len(pieces) == 9:
+        # content length added: https://github.com/dimagi/commcare-hq/pull/13542
+        date1, date2, domain, url, http_method, status_code, content_length, couch_url, request_time = pieces
+    else:
+        date1, date2, domain, url, http_method, status_code, couch_url, request_time = pieces
 
     # Combine the two date parts and then strip off milliseconds because it cannot be parsed by datetime
     string_date = '{} {}'.format(date1, date2).split(',')[0]
