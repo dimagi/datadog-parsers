@@ -7,17 +7,11 @@ APDEX_THRESHOLDS = (3, 12)
 
 
 def parse_nginx_apdex(logger, line):
-    if not line:
+    details = _get_log_details(logger, line)
+    if not details:
         return None
 
-    try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
-    except Exception:
-        logger.exception('Failed to parse log line')
-        return None
-
-    if _should_skip_log(url):
-        return None
+    timestamp, http_method, url, status_code, request_time, domain = details
 
     if request_time > APDEX_THRESHOLDS[1]:
         # Unsatisfied
@@ -40,17 +34,11 @@ def parse_nginx_apdex(logger, line):
 
 
 def parse_nginx_timings(logger, line):
-    if not line:
+    details = _get_log_details(logger, line)
+    if not details:
         return None
 
-    try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
-    except Exception:
-        logger.exception('Failed to parse log line')
-        return None
-
-    if _should_skip_log(url):
-        return None
+    timestamp, http_method, url, status_code, request_time, domain = details
 
     # Return the output as a tuple
     return ('nginx.timings', timestamp, request_time, {
@@ -63,17 +51,11 @@ def parse_nginx_timings(logger, line):
 
 
 def parse_nginx_counter(logger, line):
-    if not line:
+    details = _get_log_details(logger, line)
+    if not details:
         return None
 
-    try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
-    except Exception:
-        logger.exception('Failed to parse log line')
-        return None
-
-    if _should_skip_log(url):
-        return None
+    timestamp, http_method, url, status_code, request_time, domain = details
 
     url_group = _get_url_group(url)
 
@@ -86,6 +68,22 @@ def parse_nginx_counter(logger, line):
         'http_method': http_method,
         'domain': domain,
     })
+
+
+def _get_log_details(logger, line):
+    if not line:
+        return None
+
+    try:
+        details = _parse_line(line)
+    except Exception:
+        logger.exception('Failed to parse log line')
+        return None
+
+    if _should_skip_log(details.url):
+        return None
+
+    return details
 
 
 def _get_url_group(url):
