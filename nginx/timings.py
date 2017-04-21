@@ -3,6 +3,7 @@ import time
 from collections import namedtuple
 from datetime import datetime
 
+
 class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
     def to_tags(self, **kwargs):
         tags = self._asdict()
@@ -10,6 +11,7 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_c
         del tags['request_time']
         tags.update(kwargs)
         return tags
+
 
 WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
@@ -30,7 +32,6 @@ def parse_nginx_apdex(logger, line):
         # Satisfied
         apdex_score = 1
 
-    # Return the output as a tuple
     return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(metric_type='gauge')
 
 
@@ -39,7 +40,6 @@ def parse_nginx_timings(logger, line):
     if not details:
         return None
 
-    # Return the output as a tuple
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(metric_type='gauge')
 
 
@@ -50,7 +50,6 @@ def parse_nginx_counter(logger, line):
 
     url_group = _get_url_group(details.url)
 
-    # Return the output as a tuple
     return 'nginx.requests', details.timestamp, 1, details.to_tags(metric_type='counter', url_group=url_group)
 
 
