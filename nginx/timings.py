@@ -19,8 +19,6 @@ def parse_nginx_apdex(logger, line):
     if _should_skip_log(url):
         return None
 
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
     if request_time > APDEX_THRESHOLDS[1]:
         # Unsatisfied
         apdex_score = 0
@@ -54,9 +52,6 @@ def parse_nginx_timings(logger, line):
     if _should_skip_log(url):
         return None
 
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
-
     # Return the output as a tuple
     return ('nginx.timings', timestamp, request_time, {
         'metric_type': 'gauge',
@@ -79,9 +74,6 @@ def parse_nginx_counter(logger, line):
 
     if _should_skip_log(url):
         return None
-
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
 
     url_group = _get_url_group(url)
 
@@ -120,7 +112,7 @@ def _parse_line(line):
     timestamp = time.mktime(date.timetuple())
     domain = _extract_domain(url)
     url = _sanitize_url(url)
-    return timestamp, http_method, url, status_code, request_time, domain
+    return timestamp, http_method, url, status_code, float(request_time.strip()), domain
 
 
 def _sanitize_url(url):
