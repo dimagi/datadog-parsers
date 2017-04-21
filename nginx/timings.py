@@ -3,7 +3,13 @@ import time
 from collections import namedtuple
 from datetime import datetime
 
-LogDetails = namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')
+class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
+    def to_tags(self, **kwargs):
+        tags = self._asdict()
+        del tags['timestamp']
+        del tags['request_time']
+        tags.update(kwargs)
+        return tags
 
 WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
@@ -25,13 +31,7 @@ def parse_nginx_apdex(logger, line):
         apdex_score = 1
 
     # Return the output as a tuple
-    return ('nginx.apdex', details.timestamp, apdex_score, {
-        'metric_type': 'gauge',
-        'url': details.url,
-        'status_code': details.status_code,
-        'http_method': details.http_method,
-        'domain': details.domain,
-    })
+    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(metric_type='gauge')
 
 
 def parse_nginx_timings(logger, line):
@@ -40,13 +40,7 @@ def parse_nginx_timings(logger, line):
         return None
 
     # Return the output as a tuple
-    return ('nginx.timings', details.timestamp, details.request_time, {
-        'metric_type': 'gauge',
-        'url': details.url,
-        'status_code': details.status_code,
-        'http_method': details.http_method,
-        'domain': details.domain,
-    })
+    return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(metric_type='gauge')
 
 
 def parse_nginx_counter(logger, line):
@@ -57,14 +51,7 @@ def parse_nginx_counter(logger, line):
     url_group = _get_url_group(details.url)
 
     # Return the output as a tuple
-    return ('nginx.requests', details.timestamp, 1, {
-        'metric_type': 'counter',
-        'url_group': url_group,
-        'url': details.url,
-        'status_code': details.status_code,
-        'http_method': details.http_method,
-        'domain': details.domain,
-    })
+    return 'nginx.requests', details.timestamp, 1, details.to_tags(metric_type='counter', url_group=url_group)
 
 
 def _get_log_details(logger, line):
