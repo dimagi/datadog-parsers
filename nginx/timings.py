@@ -1,99 +1,72 @@
 import re
 import time
+from collections import namedtuple
 from datetime import datetime
+
+
+class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
+    def to_tags(self, **kwargs):
+        tags = self._asdict()
+        del tags['timestamp']
+        del tags['request_time']
+        tags.update(kwargs)
+        return tags
+
 
 WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
 
 
 def parse_nginx_apdex(logger, line):
-    if not line:
+    details = _get_log_details(logger, line)
+    if not details:
         return None
 
-    try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
-    except Exception:
-        logger.exception('Failed to parse log line')
-        return None
-
-    if _should_skip_log(url):
-        return None
-
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
-    if request_time > APDEX_THRESHOLDS[1]:
+    if details.request_time > APDEX_THRESHOLDS[1]:
         # Unsatisfied
         apdex_score = 0
-    elif request_time > APDEX_THRESHOLDS[0]:
+    elif details.request_time > APDEX_THRESHOLDS[0]:
         # Tolerating
         apdex_score = 0.5
     else:
         # Satisfied
         apdex_score = 1
 
-    # Return the output as a tuple
-    return ('nginx.apdex', timestamp, apdex_score, {
-        'metric_type': 'gauge',
-        'url': url,
-        'status_code': status_code,
-        'http_method': http_method,
-        'domain': domain,
-    })
+    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(metric_type='gauge')
 
 
 def parse_nginx_timings(logger, line):
-    if not line:
+    details = _get_log_details(logger, line)
+    if not details:
         return None
 
-    try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
-    except Exception:
-        logger.exception('Failed to parse log line')
-        return None
-
-    if _should_skip_log(url):
-        return None
-
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
-
-    # Return the output as a tuple
-    return ('nginx.timings', timestamp, request_time, {
-        'metric_type': 'gauge',
-        'url': url,
-        'status_code': status_code,
-        'http_method': http_method,
-        'domain': domain,
-    })
+    return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(metric_type='gauge')
 
 
 def parse_nginx_counter(logger, line):
+    details = _get_log_details(logger, line)
+    if not details:
+        return None
+
+    url_group = _get_url_group(details.url)
+
+    return 'nginx.requests', details.timestamp, 1, details.to_tags(metric_type='counter', url_group=url_group)
+
+
+def _get_log_details(logger, line):
     if not line:
         return None
 
     try:
-        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
+        details = _parse_line(line)
     except Exception:
         logger.exception('Failed to parse log line')
         return None
 
-    if _should_skip_log(url):
+    if _should_skip_log(details.url):
         return None
 
-    # Convert the metric value into a float
-    request_time = float(request_time.strip())
-
-    url_group = _get_url_group(url)
-
-    # Return the output as a tuple
-    return ('nginx.requests', timestamp, 1, {
-        'metric_type': 'counter',
-        'url_group': url_group,
-        'url': url,
-        'status_code': status_code,
-        'http_method': http_method,
-        'domain': domain,
-    })
+    return details
 
 
 def _get_url_group(url):
@@ -120,7 +93,7 @@ def _parse_line(line):
     timestamp = time.mktime(date.timetuple())
     domain = _extract_domain(url)
     url = _sanitize_url(url)
-    return timestamp, http_method, url, status_code, request_time, domain
+    return LogDetails(timestamp, http_method, url, status_code, float(request_time.strip()), domain)
 
 
 def _sanitize_url(url):
