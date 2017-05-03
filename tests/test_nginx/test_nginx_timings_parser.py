@@ -1,6 +1,12 @@
 import logging
 import unittest
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group
+from nginx.timings import (
+    parse_nginx_timings,
+    parse_nginx_apdex,
+    parse_nginx_counter,
+    parse_nginx_status,
+    _get_url_group
+)
 from nose_parameterized import parameterized
 
 logging.basicConfig(level=logging.DEBUG)
@@ -20,7 +26,7 @@ class TestNginxTimingsParser(unittest.TestCase):
         metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE)
 
         self.assertEqual(metric_name, 'nginx.timings')
-        self.assertEqual(timestamp, 1446038294.0)
+        self.assertEqual(timestamp, 1446059894.0)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
         self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
@@ -60,7 +66,20 @@ class TestNginxTimingsParser(unittest.TestCase):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, SIMPLE)
 
         self.assertEqual(metric_name, 'nginx.requests')
-        self.assertEqual(timestamp, 1446038294.0)
+        self.assertEqual(timestamp, 1446059894.0)
+        self.assertEqual(count, 1)
+        self.assertEqual(attrs['metric_type'], 'counter')
+        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
+        self.assertEqual(attrs['url_group'], 'api')
+        self.assertEqual(attrs['status_code'], '401')
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['domain'], 'uth-rhd')
+
+    def test_parse_nginx_status(self):
+        metric_name, timestamp, count, attrs = parse_nginx_status(logging, SIMPLE)
+
+        self.assertEqual(metric_name, 'nginx.status_code.401')
+        self.assertEqual(timestamp, 1446059894.0)
         self.assertEqual(count, 1)
         self.assertEqual(attrs['metric_type'], 'counter')
         self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')

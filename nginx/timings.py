@@ -69,6 +69,35 @@ def _get_log_details(logger, line):
     return details
 
 
+def parse_nginx_status(logger, line):
+    if not line:
+        return None
+
+    try:
+        timestamp, http_method, url, status_code, request_time, domain = _parse_line(line)
+    except Exception:
+        logger.exception('Failed to parse log line')
+        return None
+
+    if _should_skip_log(url):
+        return None
+
+    # Convert the metric value into a float
+    request_time = float(request_time.strip())
+
+    url_group = _get_url_group(url)
+
+    # Return the output as a tuple
+    return ('nginx.status_code.' + status_code, timestamp, 1, {
+        'metric_type': 'counter',
+        'url_group': url_group,
+        'url': url,
+        'status_code': status_code,
+        'http_method': http_method,
+        'domain': domain,
+    })
+
+
 def _get_url_group(url):
     default = 'other'
     if url.startswith('/a/' + WILDCARD):
