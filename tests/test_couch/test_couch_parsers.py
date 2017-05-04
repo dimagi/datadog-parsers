@@ -12,7 +12,7 @@ BORKED = 'Borked'
 
 class TestCouchLogParser(unittest.TestCase):
 
-    def _test_log_parsing(self, line, timestamp, request_time, expected_attrs):
+    def _test_log_parsing(self, line, expected_timestamp, expected_request_time, expected_attrs):
         metric_name, timestamp, request_time, attrs = parse_couch_logs(logging, line)
 
         expected_attrs.update({
@@ -21,8 +21,8 @@ class TestCouchLogParser(unittest.TestCase):
         })
 
         self.assertEqual(metric_name, 'couch.timings')
-        self.assertEqual(timestamp, timestamp)
-        self.assertEqual(request_time, request_time)
+        self.assertEqual(expected_timestamp, timestamp)
+        self.assertEqual(expected_request_time, request_time)
         self.assertEqual(expected_attrs, attrs)
 
     def test_simple_log_parsing(self):
@@ -36,7 +36,7 @@ class TestCouchLogParser(unittest.TestCase):
         })
 
     def test_log_parsing_content_length(self):
-        self._test_log_parsing(WITH_CONTENT_LENGTH, 1446309123.0, 0.191515, {
+        self._test_log_parsing(WITH_CONTENT_LENGTH, 1493893218.0, 0.007104, {
             'domain': 'icds-cas',
             'url': '/a/*/apps/download/*/modules-*/forms-*.xml',
             'couch_url': '/commcarehq__apps/',
@@ -46,7 +46,7 @@ class TestCouchLogParser(unittest.TestCase):
         })
 
     def test_log_parsing_database_name(self):
-        self._test_log_parsing(WITH_DATABASE_NAME, 1446309123.0, 0.191515, {
+        self._test_log_parsing(WITH_DATABASE_NAME, 1493893221.0, 0.004401, {
             'domain': 'icds-cas',
             'url': '/a/*/receiver/secure/*/',
             'couch_url': '_design/users/_view/by_username',
