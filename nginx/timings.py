@@ -2,6 +2,7 @@ import re
 import time
 from collections import namedtuple
 from datetime import datetime
+from dateutil import parser
 
 
 class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
@@ -85,7 +86,7 @@ def _should_skip_log(url):
 def _parse_line(line):
     match = re.match(r'\[(?P<date>[^]]+)\]', line)
     string_date = match.group('date')
-    date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
+    date = parser.parse(string_date, fuzzy=True)
 
     # First two dummy args are from the date being split
     _, _, http_method, url, http_protocol, status_code, request_time = line.split()

@@ -6,6 +6,7 @@ from nose_parameterized import parameterized
 logging.basicConfig(level=logging.DEBUG)
 
 SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
+SIMPLE_TZ = '[28/Oct/2015:15:18:14 +0530] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
 TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
@@ -15,6 +16,18 @@ FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1
 
 
 class TestNginxTimingsParser(unittest.TestCase):
+
+    def test_basic_log_tz_parsing(self):
+        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE_TZ)
+
+        self.assertEqual(metric_name, 'nginx.timings')
+        self.assertEqual(timestamp, 1446038294.0)
+        self.assertEqual(request_time, 0.242)
+        self.assertEqual(attrs['metric_type'], 'gauge')
+        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
+        self.assertEqual(attrs['status_code'], '401')
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_basic_log_parsing(self):
         metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE)
