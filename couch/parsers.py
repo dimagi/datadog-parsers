@@ -16,7 +16,7 @@ def parse_couch_logs(logger, line):
         return None
 
     try:
-        timestamp, domain, url, http_method, status_code, couch_url, request_seconds = _parse_line(line)
+        timestamp, domain, url, database, http_method, status_code, couch_url, request_seconds = _parse_line(line)
     except Exception:
         logger.exception('Failed to parse log line')
         return None
@@ -24,6 +24,7 @@ def parse_couch_logs(logger, line):
     return ('couch.timings', timestamp, request_seconds, {
         'metric_type': 'gauge',
         'url': url,
+        'database': database,
         'domain': domain,
         'http_method': http_method,
         'status_code': status_code,
@@ -33,11 +34,15 @@ def parse_couch_logs(logger, line):
 
 def _parse_line(line):
     pieces = line.split()
-    if len(pieces) == 9:
+    database = ''
+    if len(pieces) == 10:
+        # database name added: https://github.com/dimagi/couchdbkit/pull/22
+        date1, date2, username_domain, url, database, http_method, status_code, content_length, couch_url, request_time = pieces
+    elif len(pieces) == 9:
         # content length added: https://github.com/dimagi/commcare-hq/pull/13542
-        date1, date2, domain, url, http_method, status_code, content_length, couch_url, request_time = pieces
+        date1, date2, username_domain, url, http_method, status_code, content_length, couch_url, request_time = pieces
     else:
-        date1, date2, domain, url, http_method, status_code, couch_url, request_time = pieces
+        date1, date2, username_domain, url, http_method, status_code, couch_url, request_time = pieces
 
     # Combine the two date parts and then strip off milliseconds because it cannot be parsed by datetime
     string_date = '{} {}'.format(date1, date2).split(',')[0]
@@ -46,7 +51,7 @@ def _parse_line(line):
     timestamp = time.mktime(date.timetuple())
 
     # Strip off first to letters which are [: and last letter which is a closing ]
-    domain = domain[2:-1]
+    domain = _sanitize_domain(username_domain)
 
     url = _sanitize_url(url)
     couch_url = _sanitize_couch_url(couch_url)
@@ -54,7 +59,7 @@ def _parse_line(line):
     hours, minutes, seconds = request_time.split(':')
     request_seconds = float(seconds) + (60 * float(minutes)) + (60 * 60 * float(hours))
 
-    return timestamp, domain, url, http_method, status_code, couch_url, request_seconds
+    return timestamp, domain, url, database, http_method, status_code, couch_url, request_seconds
 
 
 def _sanitize_url(url):
@@ -80,3 +85,10 @@ def _sanitize_couch_url(url):
     url = re.sub(r'[-0-9a-f]{36}', '{}'.format(WILDCARD), url)
 
     return url
+
+
+def _sanitize_domain(domain_username):
+    """Expected format: ``[username:domain] ``"""
+    stripped = domain_username[1:-1]  # strip off []
+    username, domain = stripped.split(':')
+    return domain
