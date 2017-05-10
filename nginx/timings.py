@@ -9,6 +9,7 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_c
         tags = self._asdict()
         del tags['timestamp']
         del tags['request_time']
+        del tags['url']
         tags.update(kwargs)
         return tags
 
