@@ -25,7 +25,6 @@ def parse_couch_logs(logger, line):
         'metric_type': 'gauge',
         'url': url,
         'database': database,
-        'domain': domain,
         'http_method': http_method,
         'status_code': status_code,
         'couch_url': couch_url,
