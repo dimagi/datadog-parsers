@@ -75,8 +75,10 @@ def _get_url_group(url):
     if url.startswith('/a/' + WILDCARD):
         parts = url.split('/')
         return parts[3] if len(parts) >= 4 else default
-
-    return default
+    elif url in ('/home/', '/pricing/'):  # track certain urls individually
+        return url
+    else:
+        return default
 
 
 def _should_skip_log(url):
