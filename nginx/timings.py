@@ -51,8 +51,24 @@ def parse_nginx_counter(logger, line):
 
     url_group = _get_url_group(details.url)
 
-    return 'nginx.requests', details.timestamp, 1, details.to_tags(metric_type='counter', url_group=url_group)
+    return 'nginx.requests', details.timestamp, 1, details.to_tags(
+        metric_type='counter',
+        url_group=url_group,
+        duration=get_duration_bucket(details.request_time)
+    )
 
+
+def get_duration_bucket(duration_in_sec):
+    if duration_in_sec < 1:
+        return 'lt_001s'
+    elif duration_in_sec < 5:
+        return 'lt_005s'
+    elif duration_in_sec < 20:
+        return 'lt_020s'
+    elif duration_in_sec < 120:
+        return 'lt_120s'
+    else:
+        return 'over_120s'
 
 def _get_log_details(logger, line):
     if not line:
