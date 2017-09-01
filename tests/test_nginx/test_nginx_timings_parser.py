@@ -12,6 +12,7 @@ BORKED = 'Borked'
 SKIPPED = '[28/Oct/2015:15:18:14 +0000] GET /static/myawesomejsfile.js HTTP/1.1 200 0.242'
 ID_NORMALIZE = '[28/Oct/2015:15:18:14 +0000] GET /a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/ HTTP/1.1 200 0.242'
 FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1.1 200 19.330'
+HOME = '[01/Sep/2017:20:14:43 +0000] GET /home/ HTTP/1.1 200 18.067'
 
 
 class TestNginxTimingsParser(unittest.TestCase):
@@ -38,6 +39,21 @@ class TestNginxTimingsParser(unittest.TestCase):
         metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, ID_NORMALIZE)
 
         self.assertEqual(attrs['url'], '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
+
+    def test_home_counter(self):
+        metric_name, timestamp, one, attrs = parse_nginx_counter(logging, HOME)
+        self.assertEqual(metric_name, 'nginx.requests')
+        self.assertEqual(one, 1)
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['url_group'], '/home/')
+
+    def test_home_timings(self):
+        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, HOME)
+        self.assertEqual(metric_name, 'nginx.timings')
+        self.assertEqual(request_time, 18.067)
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['url'], '/home/')
+
 
     def test_apdex_parser_satisfied(self):
         metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, SIMPLE)

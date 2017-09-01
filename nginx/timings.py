@@ -41,7 +41,10 @@ def parse_nginx_timings(logger, line):
     if not details:
         return None
 
-    return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(metric_type='gauge')
+    return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
+        url=details.url if details.url in ('/home/', '/pricing/') else 'not_stored',
+        metric_type='gauge',
+    )
 
 
 def parse_nginx_counter(logger, line):
