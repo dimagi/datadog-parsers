@@ -11,6 +11,8 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method,
         del tags['request_time']
         del tags['url']
         del tags['domain']
+        if not self.cache_status:
+            del tags['cache_status']
         tags.update(kwargs)
         return tags
 
@@ -112,7 +114,14 @@ def _parse_line(line):
     date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
 
     # First two dummy args are from the date being split
-    _, _, cache_status, http_method, url, http_protocol, status_code, request_time = line.split()
+    parts = line.split()
+    if len(parts) == 8:
+        _, _, cache_status, http_method, url, http_protocol, status_code, request_time = parts
+    elif len(parts) == 7:
+        _, _, http_method, url, http_protocol, status_code, request_time = parts
+        cache_status = None
+    else:
+        raise Exception('Unknown log format')
 
     timestamp = time.mktime(date.timetuple())
     domain = _extract_domain(url)
