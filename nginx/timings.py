@@ -116,6 +116,7 @@ def _parse_line(line):
     # First two dummy args are from the date being split
     parts = line.split()
     if len(parts) == 8:
+        # cache status added https://github.com/dimagi/commcarehq-ansible/pull/918
         _, _, cache_status, http_method, url, http_protocol, status_code, request_time = parts
     elif len(parts) == 7:
         _, _, http_method, url, http_protocol, status_code, request_time = parts
