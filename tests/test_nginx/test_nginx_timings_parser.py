@@ -28,7 +28,6 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(attrs['url'], 'not_stored')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_borked_log_line(self):
         self.assertIsNone(parse_nginx_timings(logging, BORKED))
@@ -71,7 +70,6 @@ class TestNginxTimingsParser(unittest.TestCase):
     def test_nginx_counter(self):
         metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, SIMPLE)
         self.assertEqual(count, 1)
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_parse_nginx_counter(self):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, SIMPLE)
@@ -83,7 +81,6 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(attrs['url_group'], 'api')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     @parameterized.expand([
         ('/', 'other'),
@@ -108,5 +105,4 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(attrs['url_group'], 'apps')
         self.assertEqual(attrs['status_code'], '200')
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['domain'], 'icds-cas')
         self.assertEqual(attrs['cache_status'], 'HIT')

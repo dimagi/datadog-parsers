@@ -10,6 +10,7 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method,
         del tags['timestamp']
         del tags['request_time']
         del tags['url']
+        del tags['domain']
         tags.update(kwargs)
         return tags
 
