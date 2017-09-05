@@ -4,7 +4,7 @@ from collections import namedtuple
 from datetime import datetime
 
 
-class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
+class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain')):
     def to_tags(self, **kwargs):
         tags = self._asdict()
         del tags['timestamp']
@@ -111,12 +111,12 @@ def _parse_line(line):
     date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
 
     # First two dummy args are from the date being split
-    _, _, http_method, url, http_protocol, status_code, request_time = line.split()
+    _, _, cache_status, http_method, url, http_protocol, status_code, request_time = line.split()
 
     timestamp = time.mktime(date.timetuple())
     domain = _extract_domain(url)
     url = _sanitize_url(url)
-    return LogDetails(timestamp, http_method, url, status_code, float(request_time.strip()), domain)
+    return LogDetails(timestamp, cache_status, http_method, url, status_code, float(request_time.strip()), domain)
 
 
 def _sanitize_url(url):
