@@ -3,16 +3,30 @@ import time
 from collections import namedtuple
 from datetime import datetime
 
+TIMING_TAGS = {
+    'http_method',
+    'status_code',
+}
+
+APDEX_TAGS = TIMING_TAGS
+
+REQUEST_TAGS = {
+    'http_method',
+    'status_code',
+    'cache_status'
+}
+
 
 class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain')):
-    def to_tags(self, **kwargs):
+    def to_tags(self, tag_whitelist, **kwargs):
         tags = self._asdict()
-        del tags['timestamp']
-        del tags['request_time']
-        del tags['url']
-        del tags['domain']
         if not self.cache_status:
             del tags['cache_status']
+
+        for tag in tags:
+            if tag not in tag_whitelist:
+                del tags[tag]
+
         tags.update(kwargs)
         return tags
 
@@ -36,7 +50,7 @@ def parse_nginx_apdex(logger, line):
         # Satisfied
         apdex_score = 1
 
-    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(metric_type='gauge')
+    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(APDEX_TAGS, metric_type='gauge')
 
 
 def parse_nginx_timings(logger, line):
@@ -45,6 +59,7 @@ def parse_nginx_timings(logger, line):
         return None
 
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
+        TIMING_TAGS,
         url=details.url if details.url in ('/home/', '/pricing/') else 'not_stored',
         metric_type='gauge',
     )
@@ -58,6 +73,7 @@ def parse_nginx_counter(logger, line):
     url_group = _get_url_group(details.url)
 
     return 'nginx.requests', details.timestamp, 1, details.to_tags(
+        REQUEST_TAGS,
         metric_type='counter',
         url_group=url_group,
         duration=get_duration_bucket(details.request_time)
