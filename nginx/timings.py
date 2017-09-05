@@ -73,6 +73,7 @@ def get_duration_bucket(duration_in_sec):
     else:
         return 'over_120s'
 
+
 def _get_log_details(logger, line):
     if not line:
         return None

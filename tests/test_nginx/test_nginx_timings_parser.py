@@ -1,6 +1,6 @@
 import logging
 import unittest
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group
+from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group, _sanitize_url
 from nose_parameterized import parameterized
 
 logging.basicConfig(level=logging.DEBUG)
@@ -10,7 +10,7 @@ TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
 SKIPPED = '[28/Oct/2015:15:18:14 +0000] GET /static/myawesomejsfile.js HTTP/1.1 200 0.242'
-ID_NORMALIZE = '[28/Oct/2015:15:18:14 +0000] GET /a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/ HTTP/1.1 200 0.242'
+ID_NORMALIZE = '/a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/'
 FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1.1 200 19.330'
 HOME = '[01/Sep/2017:20:14:43 +0000] GET /home/ HTTP/1.1 200 18.067'
 
@@ -24,7 +24,7 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(timestamp, 1446038294.0)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
-        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
+        self.assertEqual(attrs['url'], 'not_stored')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
         self.assertEqual(attrs['domain'], 'uth-rhd')
@@ -36,9 +36,9 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertIsNone(parse_nginx_timings(logging, SKIPPED))
 
     def test_id_normalization(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, ID_NORMALIZE)
+        url = _sanitize_url(ID_NORMALIZE)
 
-        self.assertEqual(attrs['url'], '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
+        self.assertEqual(url, '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
 
     def test_home_counter(self):
         metric_name, timestamp, one, attrs = parse_nginx_counter(logging, HOME)
@@ -79,7 +79,6 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(timestamp, 1446038294.0)
         self.assertEqual(count, 1)
         self.assertEqual(attrs['metric_type'], 'counter')
-        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
         self.assertEqual(attrs['url_group'], 'api')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
