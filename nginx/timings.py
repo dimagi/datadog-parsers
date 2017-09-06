@@ -3,6 +3,12 @@ import time
 from collections import namedtuple
 from datetime import datetime
 
+
+PARSER_RX = [
+    r"^\[(?P<timestamp>[^]]+)\] (?P<cache_status>\w+) ((?P<http_method>GET|POST) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+    r"^\[(?P<timestamp>[^]]+)\] ((?P<http_method>GET|POST) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+]
+
 TIMING_TAGS = {
     'http_method',
     'status_code',
@@ -125,28 +131,27 @@ def _should_skip_log(url):
 
 
 def _parse_line(line):
-    match = re.match(r'\[(?P<date>[^]]+)\]', line)
-    string_date = match.group('date')
-    date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
+    # log_format timing '[$time_local] $upstream_cache_status "$request" $status $request_time';
 
-    # First two dummy args are from the date being split
-    parts = line.split()
-    if len(parts) == 8:
-        # cache status added https://github.com/dimagi/commcarehq-ansible/pull/918
-        _, _, cache_status, http_method, url, http_protocol, status_code, request_time = parts
-    elif len(parts) == 7:
-        _, _, http_method, url, http_protocol, status_code, request_time = parts
-        cache_status = None
-    else:
-        raise Exception('Unknown log format')
+    groupdict = None
+    for parser in PARSER_RX:
+        match = re.match(parser, line, re.IGNORECASE)
+        if match:
+            groupdict = match.groupdict()
+            break
 
-    timestamp = time.mktime(date.timetuple())
-    domain = _extract_domain(url)
-    url = _sanitize_url(url)
-    return LogDetails(timestamp, cache_status, http_method, url, status_code, float(request_time.strip()), domain)
+    if not groupdict:
+        raise Exception('No parsers match line: "{}"'.format(line))
+
+    fields = {}
+    for field_name, transform in FIELDS.items():
+        val = groupdict.get(field_name)
+        fields[field_name] = transform(groupdict, val) if transform else val
+
+    return LogDetails(**fields)
 
 
-def _sanitize_url(url):
+def _sanitize_url(_, url):
     # Normalize all domain names
     url = re.sub(r'/a/[0-9a-z-]+', '/a/{}'.format(WILDCARD), url)
 
@@ -162,8 +167,29 @@ def _sanitize_url(url):
     return url
 
 
-def _extract_domain(url):
+def _extract_domain(all_fields, _):
+    url = all_fields['url']
     match = re.search(r'/a/(?P<domain>[0-9a-z-]+)', url)
     if not match:
         return ''
     return match.group('domain')
+
+
+def _parse_timestamp(_, string_date):
+    date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
+    return time.mktime(date.timetuple())
+
+
+def _request_time_to_float(_, duration):
+    return float(duration.strip())
+
+
+FIELDS = {
+    'timestamp': _parse_timestamp,
+    'cache_status': None,
+    'http_method': None,
+    'url': _sanitize_url,
+    'status_code': None,
+    'request_time': _request_time_to_float,
+    'domain': _extract_domain,
+}
