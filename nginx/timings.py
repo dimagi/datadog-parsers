@@ -5,8 +5,7 @@ from datetime import datetime
 
 
 PARSER_RX = [
-    r"^\[(?P<timestamp>[^]]+)\] (?P<cache_status>\w+) ((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
-    r"^\[(?P<timestamp>[^]]+)\] ((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+    r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>\w+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
 ]
 
 TIMING_TAGS = {
@@ -131,8 +130,6 @@ def _should_skip_log(url):
 
 
 def _parse_line(line):
-    # log_format timing '[$time_local] $upstream_cache_status "$request" $status $request_time';
-
     groupdict = None
     for parser in PARSER_RX:
         match = re.match(parser, line, re.IGNORECASE)
