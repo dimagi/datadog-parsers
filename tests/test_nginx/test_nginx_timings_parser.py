@@ -1,6 +1,6 @@
 import logging
 import unittest
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group
+from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group, _sanitize_url
 from nose_parameterized import parameterized
 
 logging.basicConfig(level=logging.DEBUG)
@@ -10,9 +10,11 @@ TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
 SKIPPED = '[28/Oct/2015:15:18:14 +0000] GET /static/myawesomejsfile.js HTTP/1.1 200 0.242'
-ID_NORMALIZE = '[28/Oct/2015:15:18:14 +0000] GET /a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/ HTTP/1.1 200 0.242'
+ID_NORMALIZE = '/a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/'
 FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1.1 200 19.330'
 HOME = '[01/Sep/2017:20:14:43 +0000] GET /home/ HTTP/1.1 200 18.067'
+CACHE = '[01/Sep/2017:20:14:43 +0000] HIT GET /a/icds-cas/apps/download/01d133d7c6264247bf0155f7c5e1af03/modules-11/forms-6.xml?profile=c708a9f737d147bfa57781dd46935502 HTTP/1.1 200 18.067'
+URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81630cfff87fdc77b8fd4a7427703bdc/media_profile.ccpr?latest=true&profile=None loira fabiao bila HTTP/1.1 400 0.001'
 
 
 class TestNginxTimingsParser(unittest.TestCase):
@@ -24,10 +26,9 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(timestamp, 1446038294.0)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
-        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
+        self.assertEqual(attrs['url'], 'not_stored')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_borked_log_line(self):
         self.assertIsNone(parse_nginx_timings(logging, BORKED))
@@ -36,9 +37,9 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertIsNone(parse_nginx_timings(logging, SKIPPED))
 
     def test_id_normalization(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, ID_NORMALIZE)
+        url = _sanitize_url(None, ID_NORMALIZE)
 
-        self.assertEqual(attrs['url'], '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
+        self.assertEqual(url, '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
 
     def test_home_counter(self):
         metric_name, timestamp, one, attrs = parse_nginx_counter(logging, HOME)
@@ -70,7 +71,6 @@ class TestNginxTimingsParser(unittest.TestCase):
     def test_nginx_counter(self):
         metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, SIMPLE)
         self.assertEqual(count, 1)
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     def test_parse_nginx_counter(self):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, SIMPLE)
@@ -79,11 +79,9 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(timestamp, 1446038294.0)
         self.assertEqual(count, 1)
         self.assertEqual(attrs['metric_type'], 'counter')
-        self.assertEqual(attrs['url'], '/a/*/api/case/attachment/*/VH016899R9_000839_20150922T034026.MP4')
         self.assertEqual(attrs['url_group'], 'api')
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['domain'], 'uth-rhd')
 
     @parameterized.expand([
         ('/', 'other'),
@@ -98,3 +96,23 @@ class TestNginxTimingsParser(unittest.TestCase):
 
     def test_nginx_formplayer(self):
         self.assertIsNotNone(parse_nginx_timings(logging, FORMPLAYER))
+
+    def test_cache(self):
+        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE)
+        self.assertEqual(metric_name, 'nginx.requests')
+        self.assertEqual(timestamp, 1504289683.0)
+        self.assertEqual(count, 1)
+        self.assertEqual(attrs['metric_type'], 'counter')
+        self.assertEqual(attrs['url_group'], 'apps')
+        self.assertEqual(attrs['status_code'], '200')
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['cache_status'], 'HIT')
+
+
+    def test_url_with_spaces(self):
+        metric_name, timestamp, count, attrs = parse_nginx_timings(logging, URL_SPACES)
+        self.assertEqual(metric_name, 'nginx.timings')
+        self.assertEqual(timestamp, 1504243149.0)
+        self.assertEqual(count, 0.001)
+        self.assertEqual(attrs['status_code'], '400')
+        self.assertEqual(attrs['http_method'], 'GET')

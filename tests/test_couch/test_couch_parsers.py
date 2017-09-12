@@ -28,7 +28,6 @@ class TestCouchLogParser(unittest.TestCase):
 
     def test_simple_log_parsing(self):
         self._test_log_parsing(SIMPLE, 1446309123.0, 0.191515, {
-            'domain': 'mvp-pampaida',
             'url': '/a/*/receiver/*/',
             'couch_url': '*',
             'status_code': 'None',
@@ -38,7 +37,6 @@ class TestCouchLogParser(unittest.TestCase):
 
     def test_log_parsing_content_length(self):
         self._test_log_parsing(WITH_CONTENT_LENGTH, 1493893218.0, 0.007104, {
-            'domain': 'icds-cas',
             'url': '/a/*/apps/download/*/modules-*/forms-*.xml',
             'couch_url': '/commcarehq__apps/',
             'status_code': '200',
@@ -48,7 +46,6 @@ class TestCouchLogParser(unittest.TestCase):
 
     def test_log_parsing_database_name(self):
         self._test_log_parsing(WITH_DATABASE_NAME, 1493893221.0, 0.004401, {
-            'domain': 'icds-cas',
             'url': '/a/*/receiver/secure/*/',
             'couch_url': '_design/users/_view/by_username',
             'status_code': '200',
@@ -58,7 +55,6 @@ class TestCouchLogParser(unittest.TestCase):
 
     def test_log_parsing_username(self):
         self._test_log_parsing(WITH_USERNAME, 1493893221.0, 0.004076, {
-            'domain': 'my-dom',
             'url': '/a/*/phone/restore/*/',
             'couch_url': '/commcarehq/',
             'status_code': '200',

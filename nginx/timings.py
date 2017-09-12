@@ -4,12 +4,35 @@ from collections import namedtuple
 from datetime import datetime
 
 
-class LogDetails(namedtuple('LogDetails', 'timestamp, http_method, url, status_code, request_time, domain')):
-    def to_tags(self, **kwargs):
+PARSER_RX = [
+    r"^\[(?P<timestamp>[^]]+)\] (?P<cache_status>\w+) ((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+    r"^\[(?P<timestamp>[^]]+)\] ((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+]
+
+TIMING_TAGS = {
+    'http_method',
+    'status_code',
+}
+
+APDEX_TAGS = TIMING_TAGS
+
+REQUEST_TAGS = {
+    'http_method',
+    'status_code',
+    'cache_status'
+}
+
+
+class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain')):
+    def to_tags(self, tag_whitelist, **kwargs):
         tags = self._asdict()
-        del tags['timestamp']
-        del tags['request_time']
-        del tags['url']
+        if not self.cache_status:
+            del tags['cache_status']
+
+        for tag in tags:
+            if tag not in tag_whitelist:
+                del tags[tag]
+
         tags.update(kwargs)
         return tags
 
@@ -33,7 +56,7 @@ def parse_nginx_apdex(logger, line):
         # Satisfied
         apdex_score = 1
 
-    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(metric_type='gauge')
+    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(APDEX_TAGS, metric_type='gauge')
 
 
 def parse_nginx_timings(logger, line):
@@ -42,6 +65,7 @@ def parse_nginx_timings(logger, line):
         return None
 
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
+        TIMING_TAGS,
         url=details.url if details.url in ('/home/', '/pricing/') else 'not_stored',
         metric_type='gauge',
     )
@@ -55,6 +79,7 @@ def parse_nginx_counter(logger, line):
     url_group = _get_url_group(details.url)
 
     return 'nginx.requests', details.timestamp, 1, details.to_tags(
+        REQUEST_TAGS,
         metric_type='counter',
         url_group=url_group,
         duration=get_duration_bucket(details.request_time)
@@ -72,6 +97,7 @@ def get_duration_bucket(duration_in_sec):
         return 'lt_120s'
     else:
         return 'over_120s'
+
 
 def _get_log_details(logger, line):
     if not line:
@@ -105,20 +131,27 @@ def _should_skip_log(url):
 
 
 def _parse_line(line):
-    match = re.match(r'\[(?P<date>[^]]+)\]', line)
-    string_date = match.group('date')
-    date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
+    # log_format timing '[$time_local] $upstream_cache_status "$request" $status $request_time';
 
-    # First two dummy args are from the date being split
-    _, _, http_method, url, http_protocol, status_code, request_time = line.split()
+    groupdict = None
+    for parser in PARSER_RX:
+        match = re.match(parser, line, re.IGNORECASE)
+        if match:
+            groupdict = match.groupdict()
+            break
 
-    timestamp = time.mktime(date.timetuple())
-    domain = _extract_domain(url)
-    url = _sanitize_url(url)
-    return LogDetails(timestamp, http_method, url, status_code, float(request_time.strip()), domain)
+    if not groupdict:
+        raise Exception('No parsers match line: "{}"'.format(line))
+
+    fields = {}
+    for field_name, transform in FIELDS.items():
+        val = groupdict.get(field_name)
+        fields[field_name] = transform(groupdict, val) if transform else val
+
+    return LogDetails(**fields)
 
 
-def _sanitize_url(url):
+def _sanitize_url(_, url):
     # Normalize all domain names
     url = re.sub(r'/a/[0-9a-z-]+', '/a/{}'.format(WILDCARD), url)
 
@@ -134,8 +167,29 @@ def _sanitize_url(url):
     return url
 
 
-def _extract_domain(url):
+def _extract_domain(all_fields, _):
+    url = all_fields['url']
     match = re.search(r'/a/(?P<domain>[0-9a-z-]+)', url)
     if not match:
         return ''
     return match.group('domain')
+
+
+def _parse_timestamp(_, string_date):
+    date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
+    return time.mktime(date.timetuple())
+
+
+def _request_time_to_float(_, duration):
+    return float(duration.strip())
+
+
+FIELDS = {
+    'timestamp': _parse_timestamp,
+    'cache_status': None,
+    'http_method': None,
+    'url': _sanitize_url,
+    'status_code': None,
+    'request_time': _request_time_to_float,
+    'domain': _extract_domain,
+}
