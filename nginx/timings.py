@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 PARSER_RX = [
-    r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>\w+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+    r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>[\w-]+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
 ]
 
 TIMING_TAGS = {

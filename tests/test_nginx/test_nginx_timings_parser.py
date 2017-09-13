@@ -14,6 +14,7 @@ ID_NORMALIZE = '/a/ben/modules-1/forms-2/form_data/a3ds3/uuid:abc123/'
 FORMPLAYER = '[04/Sep/2016:21:31:41 +0000] POST /formplayer/navigate_menu HTTP/1.1 200 19.330'
 HOME = '[01/Sep/2017:20:14:43 +0000] GET /home/ HTTP/1.1 200 18.067'
 CACHE = '[01/Sep/2017:20:14:43 +0000] HIT GET /a/icds-cas/apps/download/01d133d7c6264247bf0155f7c5e1af03/modules-11/forms-6.xml?profile=c708a9f737d147bfa57781dd46935502 HTTP/1.1 200 18.067'
+CACHE_BLANK = '[13/Sep/2017:12:34:14 +0000] - POST /a/hki-nepal-suaahara-2/receiver/secure/393a1d06a6e8422092c089082ffb5c01/ HTTP/1.1 401 0.955"'
 URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81630cfff87fdc77b8fd4a7427703bdc/media_profile.ccpr?latest=true&profile=None loira fabiao bila HTTP/1.1 400 0.001'
 
 
@@ -107,6 +108,9 @@ class TestNginxTimingsParser(unittest.TestCase):
         self.assertEqual(attrs['status_code'], '200')
         self.assertEqual(attrs['http_method'], 'GET')
         self.assertEqual(attrs['cache_status'], 'HIT')
+
+        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE_BLANK)
+        self.assertEqual(attrs['cache_status'], '-')
 
 
     def test_url_with_spaces(self):
