@@ -1,7 +1,9 @@
 import logging
 import unittest
+import datetime
 from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group, _sanitize_url
 from nose_parameterized import parameterized
+from parsing_utils import UnixTimestampTestMixin
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -18,13 +20,12 @@ CACHE_BLANK = '[13/Sep/2017:12:34:14 +0000] - POST /a/hki-nepal-suaahara-2/recei
 URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81630cfff87fdc77b8fd4a7427703bdc/media_profile.ccpr?latest=true&profile=None loira fabiao bila HTTP/1.1 400 0.001'
 
 
-class TestNginxTimingsParser(unittest.TestCase):
+class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
     def test_basic_log_parsing(self):
         metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE)
-
         self.assertEqual(metric_name, 'nginx.timings')
-        self.assertEqual(timestamp, 1446038294.0)
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
         self.assertEqual(attrs['url'], 'not_stored')
@@ -77,7 +78,7 @@ class TestNginxTimingsParser(unittest.TestCase):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, SIMPLE)
 
         self.assertEqual(metric_name, 'nginx.requests')
-        self.assertEqual(timestamp, 1446038294.0)
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
         self.assertEqual(count, 1)
         self.assertEqual(attrs['metric_type'], 'counter')
         self.assertEqual(attrs['url_group'], 'api')
@@ -101,7 +102,7 @@ class TestNginxTimingsParser(unittest.TestCase):
     def test_cache(self):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE)
         self.assertEqual(metric_name, 'nginx.requests')
-        self.assertEqual(timestamp, 1504289683.0)
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2017, 9, 1, 20, 14, 43), 1504296883)
         self.assertEqual(count, 1)
         self.assertEqual(attrs['metric_type'], 'counter')
         self.assertEqual(attrs['url_group'], 'apps')
@@ -116,7 +117,7 @@ class TestNginxTimingsParser(unittest.TestCase):
     def test_url_with_spaces(self):
         metric_name, timestamp, count, attrs = parse_nginx_timings(logging, URL_SPACES)
         self.assertEqual(metric_name, 'nginx.timings')
-        self.assertEqual(timestamp, 1504243149.0)
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2017, 9, 1, 7, 19, 9), 1504250349)
         self.assertEqual(count, 0.001)
         self.assertEqual(attrs['status_code'], '400')
         self.assertEqual(attrs['http_method'], 'GET')

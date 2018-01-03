@@ -1,5 +1,9 @@
+import os
+import sys
+from parsing_utils import get_unix_timestamp
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import re
-import time
 from collections import namedtuple
 from datetime import datetime
 
@@ -67,6 +71,5 @@ def _parse_line(line):
 
 
 def _parse_timestamp(string_date):
-    print string_date
     date = datetime.strptime(string_date, "%Y/%m/%d %H:%M:%S")
-    return time.mktime(date.timetuple())
+    return get_unix_timestamp(date)
