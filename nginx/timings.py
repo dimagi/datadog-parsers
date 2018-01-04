@@ -1,8 +1,7 @@
 import os
 import sys
-from parsing_utils import get_unix_timestamp
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from parsing_utils import get_unix_timestamp
 import re
 from collections import namedtuple
 from datetime import datetime
