@@ -1,5 +1,9 @@
+import os
+import sys
+from parsing_utils import get_unix_timestamp
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import re
-import time
 from collections import namedtuple
 from datetime import datetime
 
@@ -174,7 +178,7 @@ def _extract_domain(all_fields, _):
 
 def _parse_timestamp(_, string_date):
     date = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S +0000")
-    return time.mktime(date.timetuple())
+    return get_unix_timestamp(date)
 
 
 def _request_time_to_float(_, duration):

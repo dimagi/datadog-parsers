@@ -1,7 +1,10 @@
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import re
 import collections
-import time
 from datetime import datetime
+from parsing_utils import get_unix_timestamp
 
 """
 Sample log line:
@@ -47,7 +50,7 @@ def _parse_line(line):
     string_date = '{} {}'.format(date1, date2).split(',')[0]
 
     date = datetime.strptime(string_date, "%Y-%m-%d %H:%M:%S")
-    timestamp = time.mktime(date.timetuple())
+    timestamp = get_unix_timestamp(date)
 
     # Strip off first to letters which are [: and last letter which is a closing ]
     domain = _sanitize_domain(username_domain)
