@@ -6,4 +6,8 @@ install:
   - pip install -r requirements.txt
 
 script:
+  # make sure to check that these load cleanly as scripts (outside their package context)
+  - python couch/parsers.py
+  - python nginx/errors.py
+  - python nginx/timings.py
   - "nosetests"
