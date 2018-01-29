@@ -24,13 +24,13 @@ URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81
 
 class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
-    def test_basic_log_parsing(self):
-        lines = {
-            'not_stored': SIMPLE,
-            'icds_dashboard': ICDS_DASHBOARD,
-            '/pricing/': PRICING,
-        }
-        for url_group, line in lines.iteritems():metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, line)
+    @parameterized.expand([
+        ('not_stored', SIMPLE),
+        ('icds_dashboard', ICDS_DASHBOARD),
+        ('/pricing/', PRICING),
+    ])
+    def test_basic_log_parsing(self, url_group, line):
+        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, line)
 
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
@@ -99,6 +99,8 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         ('/a/domain', 'other'),
         ('/1/2/3/4', 'other'),
         ('/a/*/cloudcare', 'cloudcare'),
+        ('/pricing/', '/pricing/'),
+        ('/home/', '/home/'),
     ])
     def test_get_url_group(self, url, expected):
         group = _get_url_group(url)
