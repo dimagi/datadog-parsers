@@ -24,6 +24,8 @@ REQUEST_TAGS = {
     'cache_status'
 }
 
+TIMING_WHITELIST_URL_GROUP = ('/home/', '/pricing/', 'icds_dashboard')
+
 
 class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain')):
     def to_tags(self, tag_whitelist, **kwargs):
@@ -66,9 +68,11 @@ def parse_nginx_timings(logger, line):
     if not details:
         return None
 
+    url_group = _get_url_group(details.url, TIMING_WHITELIST_URL_GROUP)
+
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
         TIMING_TAGS,
-        url=details.url if details.url in ('/home/', '/pricing/') else 'not_stored',
+        url_group=url_group,
         metric_type='gauge',
     )
 
@@ -117,15 +121,16 @@ def _get_log_details(logger, line):
     return details
 
 
-def _get_url_group(url):
+def _get_url_group(url, whitelist=None):
     default = 'other'
+    group = default
     if url.startswith('/a/' + WILDCARD):
         parts = url.split('/')
-        return parts[3] if len(parts) >= 4 else default
+        group = parts[3] if len(parts) >= 4 else default
     elif url in ('/home/', '/pricing/'):  # track certain urls individually
-        return url
-    else:
-        return default
+        group = url
+
+    return group if not whitelist or group in whitelist else 'not_stored'
 
 
 def _should_skip_log(url):
