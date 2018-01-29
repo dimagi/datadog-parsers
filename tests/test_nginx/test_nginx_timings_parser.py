@@ -8,6 +8,8 @@ from parsing_utils import UnixTimestampTestMixin
 logging.basicConfig(level=logging.DEBUG)
 
 SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
+PRICING = '[28/Oct/2015:15:18:14 +0000] GET /pricing/ HTTP/1.1 401 0.242'
+ICDS_DASHBOARD = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242'
 TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
@@ -22,13 +24,19 @@ URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81
 
 class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
-    def test_basic_log_parsing(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, SIMPLE)
+    @parameterized.expand([
+        ('not_stored', SIMPLE),
+        ('icds_dashboard', ICDS_DASHBOARD),
+        ('/pricing/', PRICING),
+    ])
+    def test_basic_log_parsing(self, url_group, line):
+        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, line)
+
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
         self.assertEqual(request_time, 0.242)
         self.assertEqual(attrs['metric_type'], 'gauge')
-        self.assertEqual(attrs['url'], 'not_stored')
+        self.assertEqual(attrs['url_group'], url_group)
         self.assertEqual(attrs['status_code'], '401')
         self.assertEqual(attrs['http_method'], 'GET')
 
@@ -55,7 +63,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(metric_name, 'nginx.timings')
         self.assertEqual(request_time, 18.067)
         self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['url'], '/home/')
+        self.assertEqual(attrs['url_group'], '/home/')
 
 
     def test_apdex_parser_satisfied(self):
@@ -91,6 +99,8 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         ('/a/domain', 'other'),
         ('/1/2/3/4', 'other'),
         ('/a/*/cloudcare', 'cloudcare'),
+        ('/pricing/', '/pricing/'),
+        ('/home/', '/home/'),
     ])
     def test_get_url_group(self, url, expected):
         group = _get_url_group(url)
