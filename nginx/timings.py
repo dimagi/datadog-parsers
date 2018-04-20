@@ -12,17 +12,16 @@ PARSER_RX = [
 ]
 
 TIMING_TAGS = {
-    'http_method': None,
-    'status_code': None,
+    'http_method',
+    'status_code',
 }
 
 APDEX_TAGS = TIMING_TAGS
 
 REQUEST_TAGS = {
-    'http_method': None,
-    'status_code': None,
-    'cache_status': None,
-    'url': lambda d: d.status_code == '500',
+    'http_method',
+    'status_code',
+    'cache_status'
 }
 
 TIMING_WHITELIST_URL_GROUP = ('/home/', '/pricing/', 'icds_dashboard')
@@ -35,7 +34,7 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method,
             del tags['cache_status']
 
         for tag in tags:
-            if tag not in tag_whitelist or (tag_whitelist[tag] and not tag_whitelist[tag](self)):
+            if tag not in tag_whitelist:
                 del tags[tag]
 
         tags.update(kwargs)
