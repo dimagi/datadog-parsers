@@ -58,8 +58,11 @@ def _parse_line(line):
     url = _sanitize_url(url)
     couch_url = _sanitize_couch_url(couch_url)
 
-    hours, minutes, seconds = request_time.split(':')
-    request_seconds = float(seconds) + (60 * float(minutes)) + (60 * 60 * float(hours))
+    if ":" in request_time:
+        hours, minutes, seconds = request_time.split(':')
+        request_seconds = float(seconds) + (60 * float(minutes)) + (60 * 60 * float(hours))
+    else:
+        request_seconds = float(request_time)
 
     return timestamp, domain, url, database, http_method, status_code, couch_url, request_seconds
 
