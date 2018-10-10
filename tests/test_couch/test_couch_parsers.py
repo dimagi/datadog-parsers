@@ -10,6 +10,7 @@ SIMPLE = '2015-10-31 18:32:03,963 [:mvp-pampaida] /a/mvp-pampaida/receiver/63091
 WITH_CONTENT_LENGTH = '2017-05-04 12:20:18,957 [:icds-cas] /a/icds-cas/apps/download/768932dcb27f35c63cdbb830c202c727/modules-0/forms-0.xml HEAD 200 258 /commcarehq__apps/ 0:00:00.007104'
 WITH_DATABASE_NAME = '2017-05-04 12:20:21,416 [:icds-cas] /a/icds-cas/receiver/secure/768932dcb27f35c63cdbb830c202c727/ commcarehq__users GET 200 None _design/users/_view/by_username 0:00:00.004401'
 WITH_USERNAME = "2017-05-04 12:20:21,416 [123@my-dom.commcarehq.org:my-dom] /a/my-dom/phone/restore/768932dcb27f35c63cdbb830c202c727/ HEAD 200 260 /commcarehq/ 0:00:00.004076"
+WITH_SECONDS = "2017-05-04 12:20:21,416 [123@my-dom.commcarehq.org:my-dom] /a/my-dom/phone/restore/768932dcb27f35c63cdbb830c202c727/ HEAD 200 260 /commcarehq/ 0.004076"
 BORKED = 'Borked'
 
 
@@ -57,6 +58,15 @@ class TestCouchLogParser(UnixTimestampTestMixin, unittest.TestCase):
 
     def test_log_parsing_username(self):
         self._test_log_parsing(WITH_USERNAME, (datetime.datetime(2017, 5, 4, 12, 20, 21, 416), 1493900421), 0.004076, {
+            'url': '/a/*/phone/restore/*/',
+            'couch_url': '/commcarehq/',
+            'status_code': '200',
+            'http_method': 'HEAD',
+            'database': ''
+        })
+
+    def test_log_parsing_seconds(self):
+        self._test_log_parsing(WITH_SECONDS, (datetime.datetime(2017, 5, 4, 12, 20, 21, 416), 1493900421), 0.004076, {
             'url': '/a/*/phone/restore/*/',
             'couch_url': '/commcarehq/',
             'status_code': '200',
