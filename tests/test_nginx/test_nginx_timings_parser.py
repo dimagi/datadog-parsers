@@ -99,7 +99,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         ('/', 'other'),
         ('/a/*/api', 'api'),
         ('/a/domain', 'other'),
-        ('/1/2/3/4', 'other'),
+        ('/1/2/3/4', '/1'),
         ('/a/*/cloudcare', 'cloudcare'),
         ('/pricing/', '/pricing/'),
         ('/home/', '/home/'),

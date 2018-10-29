@@ -128,11 +128,14 @@ def _get_log_details(logger, line):
 def _get_url_group(url):
     default = 'other'
     group = default
+    parts = url.split('/')
     if url.startswith('/a/' + WILDCARD):
         parts = url.split('/')
         group = parts[3] if len(parts) >= 4 else default
     elif url in ('/home/', '/pricing/'):  # track certain urls individually
         group = url
+    elif url.startswith('/') and len(parts) > 2 and parts[1] != 'a':
+        group = '/' + parts[1]
 
     return group
 
