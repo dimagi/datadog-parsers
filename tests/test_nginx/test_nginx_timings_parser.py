@@ -7,7 +7,8 @@ from parsing_utils import UnixTimestampTestMixin
 
 logging.basicConfig(level=logging.DEBUG)
 
-SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
+SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /favicon.ico HTTP/1.1 401 0.242'
+API = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
 PRICING = '[28/Oct/2015:15:18:14 +0000] GET /pricing/ HTTP/1.1 401 0.242'
 ICDS_DASHBOARD = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242'
 TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
@@ -25,7 +26,8 @@ URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81
 class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
     @parameterized.expand([
-        ('not_stored', SIMPLE),
+        ('other', SIMPLE),
+        ('api', API),
         ('icds_dashboard', ICDS_DASHBOARD),
         ('/pricing/', PRICING),
     ])
@@ -67,7 +69,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
 
     def test_apdex_parser_satisfied(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, SIMPLE)
+        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, API)
         self.assertEqual(apdex_score, 1)
 
     def test_apdex_parser_tolerating(self):
@@ -79,11 +81,11 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(apdex_score, 0)
 
     def test_nginx_counter(self):
-        metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, SIMPLE)
+        metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, API)
         self.assertEqual(count, 1)
 
     def test_parse_nginx_counter(self):
-        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, SIMPLE)
+        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, API)
 
         self.assertEqual(metric_name, 'nginx.requests')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
