@@ -48,6 +48,8 @@ def parse_nginx_apdex(logger, line):
     if not details:
         return None
 
+    url_group = _get_url_group(details.url)
+
     if details.request_time > APDEX_THRESHOLDS[1]:
         # Unsatisfied
         apdex_score = 0
@@ -58,7 +60,11 @@ def parse_nginx_apdex(logger, line):
         # Satisfied
         apdex_score = 1
 
-    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(APDEX_TAGS, metric_type='gauge')
+    return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(
+        APDEX_TAGS,
+        url_group=url_group,
+        metric_type='gauge',
+    )
 
 
 def parse_nginx_timings(logger, line):
