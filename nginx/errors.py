@@ -13,7 +13,8 @@ SHARED_DETAILS_REGEXES = [
 
 TYPE_REGEXES = [
     (r'connect\(\) failed \(111: Connection refused\) while connecting to upstream', 'connection_refused'),
-    (r'an upstream response is buffered to a temporary file', 'buffered_to_file')
+    (r'an upstream response is buffered to a temporary file', 'buffer_to_file/upstream'),
+    (r'a client request body is buffered to a temporary file', 'buffer_to_file/client'),
 ]
 
 
