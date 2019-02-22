@@ -1,16 +1,18 @@
 import logging
 import unittest
-import datetime
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group, _sanitize_url
+from datetime import datetime
+
 from nose_parameterized import parameterized
-from parsing_utils import UnixTimestampTestMixin
+
+from nginx.timings import _get_url_group, _sanitize_url, _get_log_details, LogDetails, _get_apdex
+from parsing_utils import UnixTimestampTestMixin, get_unix_timestamp
 
 logging.basicConfig(level=logging.DEBUG)
 
 SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /favicon.ico HTTP/1.1 401 0.242'
-API = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
-PRICING = '[28/Oct/2015:15:18:14 +0000] GET /pricing/ HTTP/1.1 401 0.242'
-ICDS_DASHBOARD = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242'
+API = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/123/VH016.MP4 HTTP/1.1 200 1.2'
+PRICING = '[28/Oct/2015:15:18:14 +0000] GET /pricing/ HTTP/1.1 200 0.2'
+ICDS_DASHBOARD = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.18'
 TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
@@ -23,77 +25,52 @@ CACHE_BLANK = '[13/Sep/2017:12:34:14 +0000] - POST /a/hki-nepal-suaahara-2/recei
 URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81630cfff87fdc77b8fd4a7427703bdc/media_profile.ccpr?latest=true&profile=None loira fabiao bila HTTP/1.1 400 0.001'
 
 
-class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
+def _details(string_date, cache_status, method, url, status_code, duration, domain):
+    ts = datetime.strptime(string_date, "%d/%b/%Y:%H:%M:%S")
+    return LogDetails(
+        get_unix_timestamp(ts),
+        cache_status,
+        method,
+        url,
+        status_code,
+        duration,
+        domain
+    )
 
+class TestLineParsing(UnixTimestampTestMixin, unittest.TestCase):
     @parameterized.expand([
-        ('other', SIMPLE),
-        ('api', API),
-        ('icds_dashboard', ICDS_DASHBOARD),
-        ('/pricing/', PRICING),
+        (SIMPLE, _details('28/Oct/2015:15:18:14', None, 'GET', '/favicon.ico', '401', 0.242, '')),
+        (API, _details('28/Oct/2015:15:18:14', None, 'GET', '/a/*/api/case/attachment/123/VH016.MP4', '200', 1.2, 'uth-rhd')),
+        (ICDS_DASHBOARD, _details('28/Oct/2015:15:18:14', None, 'GET', '/a/*/icds_dashboard/anything', '401', 0.18, 'anydomain')),
+        (PRICING, _details('28/Oct/2015:15:18:14', None, 'GET', '/pricing/', '200', 0.2, '')),
+        (HOME, _details('01/Sep/2017:20:14:43', None, 'GET', '/home/', '200', 18.067, '')),
+        (FORMPLAYER, _details('04/Sep/2016:21:31:41', None, 'POST', '/formplayer/navigate_menu', '200', 19.33, '')),
+        (CACHE, _details('01/Sep/2017:20:14:43', 'HIT', 'GET', '/a/*/apps/download/*/modules-*/forms-*.xml', '200', 18.067, 'icds-cas')),
+        (CACHE_BLANK, _details('13/Sep/2017:12:34:14', '-', 'POST', '/a/*/receiver/secure/*/', '401', 0.955, 'hki-nepal-suaahara-2')),
+        (URL_SPACES, _details('01/Sep/2017:07:19:09', None, 'GET', '/a/*/apps/download/*/media_profile.ccpr loira fabiao bila', '400', 0.001, 'infomovel-ccs')),
+        (BORKED, None),
+        (SKIPPED, None),
     ])
-    def test_basic_log_parsing(self, url_group, line):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, line)
+    def test_basic_log_parsing(self, line, expected):
+        details = _get_log_details(logging, line)
+        self.assertEqual(details , expected)
 
-        self.assertEqual(metric_name, 'nginx.timings')
-        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
-        self.assertEqual(request_time, 0.242)
-        self.assertEqual(attrs['metric_type'], 'gauge')
-        self.assertEqual(attrs['url_group'], url_group)
-        self.assertEqual(attrs['status_code'], '401')
-        self.assertEqual(attrs['http_method'], 'GET')
-
-    def test_borked_log_line(self):
-        self.assertIsNone(parse_nginx_timings(logging, BORKED))
-
-    def test_skipped_line(self):
-        self.assertIsNone(parse_nginx_timings(logging, SKIPPED))
+class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
     def test_id_normalization(self):
         url = _sanitize_url(None, ID_NORMALIZE)
 
         self.assertEqual(url, '/a/*/modules-*/forms-*/form_data/*/uuid:*/')
 
-    def test_home_counter(self):
-        metric_name, timestamp, one, attrs = parse_nginx_counter(logging, HOME)
-        self.assertEqual(metric_name, 'nginx.requests')
-        self.assertEqual(one, 1)
-        self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['url_group'], '/home/')
-
-    def test_home_timings(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, HOME)
-        self.assertEqual(metric_name, 'nginx.timings')
-        self.assertEqual(request_time, 18.067)
-        self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['url_group'], '/home/')
-
-
-    def test_apdex_parser_satisfied(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, API)
-        self.assertEqual(apdex_score, 1)
-
-    def test_apdex_parser_tolerating(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, TOLERATING)
-        self.assertEqual(apdex_score, 0.5)
-
-    def test_apdex_parser_unsatisfied(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, UNSATISFIED)
-        self.assertEqual(apdex_score, 0)
-
-    def test_nginx_counter(self):
-        metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, API)
-        self.assertEqual(count, 1)
-
-    def test_parse_nginx_counter(self):
-        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, API)
-
-        self.assertEqual(metric_name, 'nginx.requests')
-        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
-        self.assertEqual(count, 1)
-        self.assertEqual(attrs['metric_type'], 'counter')
-        self.assertEqual(attrs['url_group'], 'api')
-        self.assertEqual(attrs['status_code'], '401')
-        self.assertEqual(attrs['http_method'], 'GET')
+    @parameterized.expand([
+        (1, 1),
+        (3, 1),
+        (3.01, 0.5),
+        (12, 0.5),
+        (12.01, 0),
+    ])
+    def test_apdex(self, duration, score):
+        self.assertEqual(_get_apdex(duration), score)
 
     @parameterized.expand([
         ('/', 'other'),
@@ -111,29 +88,3 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
     def test_get_url_group(self, url, expected):
         group = _get_url_group(url)
         self.assertEqual(expected, group)
-
-    def test_nginx_formplayer(self):
-        self.assertIsNotNone(parse_nginx_timings(logging, FORMPLAYER))
-
-    def test_cache(self):
-        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE)
-        self.assertEqual(metric_name, 'nginx.requests')
-        self.assert_timestamp_equal(timestamp, datetime.datetime(2017, 9, 1, 20, 14, 43), 1504296883)
-        self.assertEqual(count, 1)
-        self.assertEqual(attrs['metric_type'], 'counter')
-        self.assertEqual(attrs['url_group'], 'apps')
-        self.assertEqual(attrs['status_code'], '200')
-        self.assertEqual(attrs['http_method'], 'GET')
-        self.assertEqual(attrs['cache_status'], 'HIT')
-
-        metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE_BLANK)
-        self.assertEqual(attrs['cache_status'], '-')
-
-
-    def test_url_with_spaces(self):
-        metric_name, timestamp, count, attrs = parse_nginx_timings(logging, URL_SPACES)
-        self.assertEqual(metric_name, 'nginx.timings')
-        self.assert_timestamp_equal(timestamp, datetime.datetime(2017, 9, 1, 7, 19, 9), 1504250349)
-        self.assertEqual(count, 0.001)
-        self.assertEqual(attrs['status_code'], '400')
-        self.assertEqual(attrs['http_method'], 'GET')
