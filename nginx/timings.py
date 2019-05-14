@@ -55,22 +55,22 @@ WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
 
 
-def parse_nginx_requests(logger, line):
+def parse_nginx_apdex(logger, line):
     details = _get_log_details(logger, line)
     if not details:
         return None
 
     url_group = _get_url_group(details.url)
 
-    return [
-        _get_request_metric(details, url_group),
-        _get_timing_metric(details, url_group),
-        _get_apdex_metric(details, url_group),
-    ]
-
-
-def _get_apdex_metric(details, url_group):
-    apdex_score = _get_apdex(details)
+    if details.request_time > APDEX_THRESHOLDS[1]:
+        # Unsatisfied
+        apdex_score = 0
+    elif details.request_time > APDEX_THRESHOLDS[0]:
+        # Tolerating
+        apdex_score = 0.5
+    else:
+        # Satisfied
+        apdex_score = 1
 
     return 'nginx.apdex', details.timestamp, apdex_score, details.to_tags(
         APDEX_TAGS,
@@ -79,28 +79,27 @@ def _get_apdex_metric(details, url_group):
     )
 
 
-def _get_apdex(request_time):
-    if request_time > APDEX_THRESHOLDS[1]:
-        # Unsatisfied
-        apdex_score = 0
-    elif request_time > APDEX_THRESHOLDS[0]:
-        # Tolerating
-        apdex_score = 0.5
-    else:
-        # Satisfied
-        apdex_score = 1
-    return apdex_score
+def parse_nginx_timings(logger, line):
+    details = _get_log_details(logger, line)
+    if not details:
+        return None
 
+    url_group = _get_url_group(details.url)
 
-def _get_timing_metric(details, url_group):
-    'nginx.timings', details.timestamp, details.request_time, details.to_tags(
+    return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
         TIMING_TAGS,
         url_group=url_group,
         metric_type='gauge',
     )
 
 
-def _get_request_metric(details, url_group):
+def parse_nginx_counter(logger, line):
+    details = _get_log_details(logger, line)
+    if not details:
+        return None
+
+    url_group = _get_url_group(details.url)
+
     return 'nginx.requests', details.timestamp, 1, details.to_tags(
         REQUEST_TAGS,
         metric_type='counter',
@@ -205,8 +204,8 @@ def _parse_timestamp(_, string_date):
     return get_unix_timestamp(date)
 
 
-def _to_float(_, value):
-    return float(value.strip())
+def _request_time_to_float(_, duration):
+    return float(duration.strip())
 
 
 FIELDS = {
@@ -215,6 +214,6 @@ FIELDS = {
     'http_method': None,
     'url': _sanitize_url,
     'status_code': None,
-    'request_time': _to_float,
+    'request_time': _request_time_to_float,
     'domain': _extract_domain,
 }
