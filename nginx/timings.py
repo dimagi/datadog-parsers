@@ -27,8 +27,8 @@ REQUEST_TAGS = {
 # These patterns are to be tried _in order_
 # Group name is given by the `group_name` matching group, with the second element as fallback
 URL_PATTERN_GROUPS = [
-    (re.compile(r'^/a/[^/]*/(?P<group_name>phone/[^/]*)'), None),
-    (re.compile(r'^/a/[^/]*/(?P<group_name>[^/]*)'), None),
+    (re.compile(r'^/a/[^/]+/(?P<group_name>phone/[^/]+)'), None),
+    (re.compile(r'^/a/[^/]+/(?P<group_name>[^/]+)'), None),
     # Exact match
     (re.compile(r'^/home/$'), '/home/'),
     (re.compile(r'^/pricing/$'), '/pricing/'),
