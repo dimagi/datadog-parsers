@@ -24,11 +24,19 @@ REQUEST_TAGS = {
     'cache_status'
 }
 
-STATIC_GROUPS = {
-    '/home/': '/home/',
-    '/pricing/': '/pricing/',
-    '/accounts/login/': 'login'
-}
+# These patterns are to be tried _in order_
+URL_PATTERN_GROUPS = [
+    # Exact match
+    (re.compile(r'^/home/$'), '/home/'),
+    (re.compile(r'^/pricing/$'), '/pricing/'),
+    (re.compile(r'^/accounts/login/$'), 'login'),
+    # Prefix match
+    (re.compile(r'^/formplayer/'), 'formplayer'),
+    (re.compile(r'^/hq/multimedia/file/CommCareAudio/'), 'mm/audio'),
+    (re.compile(r'^/hq/multimedia/file/CommCareVideo/'), 'mm/video'),
+    (re.compile(r'^/hq/multimedia/file/CommCareImage/'), 'mm/image'),
+    (re.compile(r'^/hq/multimedia/file/'), 'mm/other'),
+]
 
 MM_MAPPING = {
     'CommCareAudio': 'mm/audio',
@@ -145,11 +153,11 @@ def _get_url_group(url):
         if group == 'phone':
             return 'phone/{}'.format(parts[4])
         return group
-    elif url.startswith('/hq/multimedia/file/'):
-        parts = url.split('/')
-        return MM_MAPPING.get(parts[4], 'mm/other')
     else:
-        return STATIC_GROUPS.get(url, default)
+        for pattern, group_name in URL_PATTERN_GROUPS:
+            if pattern.search(url):
+                return group_name
+        return default
 
 
 def _should_skip_log(url):
