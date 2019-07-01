@@ -25,7 +25,10 @@ REQUEST_TAGS = {
 }
 
 # These patterns are to be tried _in order_
+# Group name is given by the `group_name` matching group, with the second element as fallback
 URL_PATTERN_GROUPS = [
+    (re.compile(r'^/a/[^/]*/(?P<group_name>phone/[^/]*)'), None),
+    (re.compile(r'^/a/[^/]*/(?P<group_name>[^/]*)'), None),
     # Exact match
     (re.compile(r'^/home/$'), '/home/'),
     (re.compile(r'^/pricing/$'), '/pricing/'),
@@ -147,17 +150,11 @@ def _get_log_details(logger, line):
 
 def _get_url_group(url):
     default = 'other'
-    if url.startswith('/a/' + WILDCARD):
-        parts = url.split('/')
-        group = parts[3] if len(parts) >= 4 else default
-        if group == 'phone':
-            return 'phone/{}'.format(parts[4])
-        return group
-    else:
-        for pattern, group_name in URL_PATTERN_GROUPS:
-            if pattern.search(url):
-                return group_name
-        return default
+    for pattern, group_name in URL_PATTERN_GROUPS:
+        match = pattern.search(url)
+        if match:
+            return match.groupdict().get('group_name', group_name)
+    return default
 
 
 def _should_skip_log(url):
