@@ -1,7 +1,8 @@
 import logging
 import unittest
 import datetime
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, _get_url_group, _sanitize_url
+from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, \
+    _get_url_group, _sanitize_url, URL_PATTERN_GROUPS
 from nose_parameterized import parameterized
 from parsing_utils import UnixTimestampTestMixin
 
@@ -103,14 +104,26 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         ('/a/*/cloudcare', 'cloudcare'),
         ('/pricing/', '/pricing/'),
         ('/home/', '/home/'),
+        ('/accounts/login/', 'login'),
+        ('/accounts/login/noggin', 'other'),
         ('/a/*/phone/heartbeat/123456/', 'phone/heartbeat'),
         ('/hq/multimedia/file/CommCareAudio/123456/some-audio.mp3', 'mm/audio'),
         ('/hq/multimedia/file/CommCareVideo/123456/vid_daily_feeding.mp4', 'mm/video'),
         ('/hq/multimedia/file/CommCareImage/123456/module4_form0_en.png', 'mm/image'),
+        ('/hq/multimedia/file/', 'mm/other'),
+        ('/hq/multimedia/file/vile', 'mm/other'),
+        ('/formplayer/navigate_menu', 'formplayer'),
+        ('/formplayer/', 'formplayer'),
     ])
     def test_get_url_group(self, url, expected):
         group = _get_url_group(url)
         self.assertEqual(expected, group)
+
+    def test_pattern_format(self):
+        for pattern, group_name in URL_PATTERN_GROUPS:
+            self.assert_('?P<group_name>' in pattern.pattern or group_name is not None,
+                         "If there is no capturing group (?P<group_name>) in the pattern, "
+                         "there needs to be a default: {}".format(pattern.pattern))
 
     def test_nginx_formplayer(self):
         self.assertIsNotNone(parse_nginx_timings(logging, FORMPLAYER))

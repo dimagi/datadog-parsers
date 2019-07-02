@@ -24,11 +24,22 @@ REQUEST_TAGS = {
     'cache_status'
 }
 
-STATIC_GROUPS = {
-    '/home/': '/home/',
-    '/pricing/': '/pricing/',
-    '/accounts/login/': 'login'
-}
+# These patterns are to be tried _in order_
+# Group name is given by the `group_name` matching group, with the second element as fallback
+URL_PATTERN_GROUPS = [
+    (re.compile(r'^/a/[^/]+/(?P<group_name>phone/[^/]+)'), None),
+    (re.compile(r'^/a/[^/]+/(?P<group_name>[^/]+)'), None),
+    # Exact match
+    (re.compile(r'^/home/$'), '/home/'),
+    (re.compile(r'^/pricing/$'), '/pricing/'),
+    (re.compile(r'^/accounts/login/$'), 'login'),
+    # Prefix match
+    (re.compile(r'^/formplayer/'), 'formplayer'),
+    (re.compile(r'^/hq/multimedia/file/CommCareAudio/'), 'mm/audio'),
+    (re.compile(r'^/hq/multimedia/file/CommCareVideo/'), 'mm/video'),
+    (re.compile(r'^/hq/multimedia/file/CommCareImage/'), 'mm/image'),
+    (re.compile(r'^/hq/multimedia/file/'), 'mm/other'),
+]
 
 MM_MAPPING = {
     'CommCareAudio': 'mm/audio',
@@ -139,17 +150,11 @@ def _get_log_details(logger, line):
 
 def _get_url_group(url):
     default = 'other'
-    if url.startswith('/a/' + WILDCARD):
-        parts = url.split('/')
-        group = parts[3] if len(parts) >= 4 else default
-        if group == 'phone':
-            return 'phone/{}'.format(parts[4])
-        return group
-    elif url.startswith('/hq/multimedia/file/'):
-        parts = url.split('/')
-        return MM_MAPPING.get(parts[4], 'mm/other')
-    else:
-        return STATIC_GROUPS.get(url, default)
+    for pattern, group_name in URL_PATTERN_GROUPS:
+        match = pattern.search(url)
+        if match:
+            return match.groupdict().get('group_name', group_name)
+    return default
 
 
 def _should_skip_log(url):
