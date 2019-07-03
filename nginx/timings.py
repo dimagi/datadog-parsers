@@ -5,10 +5,11 @@ from parsing_utils import get_unix_timestamp
 import re
 from collections import namedtuple
 from datetime import datetime
+import urlparse
 
 
 PARSER_RX = [
-    r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>[\w-]+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)",
+    r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>[\w-]+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)( (?P<referer>.+))?",
 ]
 
 TIMING_TAGS = {
@@ -21,7 +22,8 @@ APDEX_TAGS = TIMING_TAGS
 REQUEST_TAGS = {
     'http_method',
     'status_code',
-    'cache_status'
+    'cache_status',
+    'referer_group',
 }
 
 # These patterns are to be tried _in order_
@@ -48,7 +50,7 @@ MM_MAPPING = {
 }
 
 
-class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain')):
+class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method, url, status_code, request_time, domain, referer')):
     def to_tags(self, tag_whitelist, **kwargs):
         tags = self._asdict()
         if not self.cache_status:
@@ -96,11 +98,13 @@ def parse_nginx_timings(logger, line):
         return None
 
     url_group = _get_url_group(details.url)
+    referer_group = _get_url_group(details.referer) if details.referer else 'unknown'
 
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
         TIMING_TAGS,
         url_group=url_group,
         metric_type='gauge',
+        referer_group=referer_group,
     )
 
 
@@ -196,6 +200,14 @@ def _sanitize_url(_, url):
     return url
 
 
+def _sanitize_referer(_, url):
+    if url and url != '-':
+        if url.startswith('http'):
+            url = urlparse.urlsplit(url).path
+        return _sanitize_url(_, url)
+    return url
+
+
 def _extract_domain(all_fields, _):
     url = all_fields['url']
     match = re.search(r'/a/(?P<domain>[0-9a-z-]+)', url)
@@ -221,4 +233,5 @@ FIELDS = {
     'status_code': None,
     'request_time': _request_time_to_float,
     'domain': _extract_domain,
+    'referer': _sanitize_referer,
 }

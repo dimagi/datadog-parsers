@@ -12,6 +12,8 @@ SIMPLE = '[28/Oct/2015:15:18:14 +0000] GET /favicon.ico HTTP/1.1 401 0.242'
 API = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd/api/case/attachment/a26f2e21-5f24-48b6-b283-200a21f79bb6/VH016899R9_000839_20150922T034026.MP4 HTTP/1.1 401 0.242'
 PRICING = '[28/Oct/2015:15:18:14 +0000] GET /pricing/ HTTP/1.1 401 0.242'
 ICDS_DASHBOARD = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242'
+ICDS_DASHBOARD_REFER_BLANK = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242 -'
+ICDS_DASHBOARD_WITH_REFER = '[28/Oct/2015:15:18:14 +0000] GET /a/anydomain/icds_dashboard/anything HTTP/1.1 401 0.242 https://www.icds-cas.gov.in/a/icds-cas/icds_dashboard/'
 TOLERATING = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 3.2'
 UNSATISFIED = '[28/Oct/2015:15:18:14 +0000] GET /a/uth-rhd HTTP/1.1 401 12.2'
 BORKED = 'Borked'
@@ -142,6 +144,26 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE_BLANK)
         self.assertEqual(attrs['cache_status'], '-')
 
+    def test_referer(self):
+        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, ICDS_DASHBOARD_WITH_REFER)
+        self.assertEqual(metric_name, 'nginx.timings')
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
+        self.assertEqual(request_time, 0.242)
+        self.assertEqual(attrs['metric_type'], 'gauge')
+        self.assertEqual(attrs['url_group'], 'icds_dashboard')
+        self.assertEqual(attrs['status_code'], '401')
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['referer_group'], 'icds_dashboard')
+
+        metric_name, timestamp, count, attrs = parse_nginx_timings(logging, ICDS_DASHBOARD_REFER_BLANK)
+        self.assertEqual(metric_name, 'nginx.timings')
+        self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
+        self.assertEqual(request_time, 0.242)
+        self.assertEqual(attrs['metric_type'], 'gauge')
+        self.assertEqual(attrs['url_group'], 'icds_dashboard')
+        self.assertEqual(attrs['status_code'], '401')
+        self.assertEqual(attrs['http_method'], 'GET')
+        self.assertEqual(attrs['referer_group'], 'other')
 
     def test_url_with_spaces(self):
         metric_name, timestamp, count, attrs = parse_nginx_timings(logging, URL_SPACES)
