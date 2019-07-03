@@ -114,12 +114,14 @@ def parse_nginx_counter(logger, line):
         return None
 
     url_group = _get_url_group(details.url)
+    referer_group = _get_url_group(details.referer) if details.referer else 'unknown'
 
     return 'nginx.requests', details.timestamp, 1, details.to_tags(
         REQUEST_TAGS,
         metric_type='counter',
         url_group=url_group,
-        duration=get_duration_bucket(details.request_time)
+        duration=get_duration_bucket(details.request_time),
+        referer_group=referer_group,
     )
 
 
