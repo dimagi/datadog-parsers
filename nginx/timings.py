@@ -6,7 +6,8 @@ import re
 from collections import namedtuple
 from datetime import datetime
 import urlparse
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 PARSER_RX = [
     r"^\[(?P<timestamp>[^]]+)\] ((?P<cache_status>[\w-]+) )?((?P<http_method>\w+) (?P<url>.+) (http\/\d\.\d)) (?P<status_code>\d{3}) (?P<request_time>\d+\.?\d*)( (?P<referer>.+))?",
@@ -68,7 +69,7 @@ WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
 
 
-def parse_nginx_apdex(logger, line):
+def parse_nginx_apdex(logger, line, *args):
     details = _get_log_details(logger, line)
     if not details:
         return None
@@ -92,7 +93,7 @@ def parse_nginx_apdex(logger, line):
     )
 
 
-def parse_nginx_timings(logger, line):
+def parse_nginx_timings(logger, line, *args):
     details = _get_log_details(logger, line)
     if not details:
         return None
@@ -108,7 +109,7 @@ def parse_nginx_timings(logger, line):
     )
 
 
-def parse_nginx_counter(logger, line):
+def parse_nginx_counter(logger, line, *args):
     details = _get_log_details(logger, line)
     if not details:
         return None
@@ -176,7 +177,7 @@ def _parse_line(line):
             break
 
     if not groupdict:
-        raise Exception('No parsers match line: "{}"'.format(line))
+        logging.warning('No parsers match line: "{}"'.format(line)) 
 
     fields = {}
     for field_name, transform in FIELDS.items():
