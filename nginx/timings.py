@@ -148,9 +148,9 @@ def _get_log_details(logger, line):
     except Exception:
         logger.exception('Failed to parse log line')
         return None
-
-    if _should_skip_log(details.url):
-        return None
+    if details:
+      if _should_skip_log(details.url):
+          return None
 
     return details
 
@@ -178,6 +178,7 @@ def _parse_line(line):
 
     if not groupdict:
         logging.warning('No parsers match line: "{}"'.format(line)) 
+        return None
 
     fields = {}
     for field_name, transform in FIELDS.items():
