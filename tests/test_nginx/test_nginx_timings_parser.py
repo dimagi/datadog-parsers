@@ -1,8 +1,7 @@
 import logging
 import unittest
 import datetime
-from nginx.timings import parse_nginx_timings, parse_nginx_apdex, parse_nginx_counter, \
-    _get_url_group, _sanitize_url, URL_PATTERN_GROUPS
+from nginx.timings import parse_logs, _get_url_group, _sanitize_url, URL_PATTERN_GROUPS
 from nose_parameterized import parameterized
 from parsing_utils import UnixTimestampTestMixin
 
@@ -26,6 +25,25 @@ CACHE_BLANK = '[13/Sep/2017:12:34:14 +0000] - POST /a/hki-nepal-suaahara-2/recei
 URL_SPACES = '[01/Sep/2017:07:19:09 +0000] GET /a/infomovel-ccs/apps/download/81630cfff87fdc77b8fd4a7427703bdc/media_profile.ccpr?latest=true&profile=None loira fabiao bila HTTP/1.1 400 0.001'
 
 
+
+def _get_metric(logging, line, index):
+    metrics = parse_logs(logging, line)
+    if metrics:
+        return metrics[index]
+
+
+def parse_nginx_timing(logging, line):
+    return _get_metric(logging, line, 2)
+
+
+def parse_nginx_counter(logging, line):
+    return _get_metric(logging, line, 0)
+
+
+def prase_nginx_apdex(logging, line):
+    return _get_metric(logging, line, 1)
+
+
 class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
     @parameterized.expand([
@@ -35,7 +53,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         ('/pricing/', PRICING),
     ])
     def test_basic_log_parsing(self, url_group, line):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, line)
+        metric_name, timestamp, request_time, attrs = parse_nginx_timing(logging, line)
 
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
@@ -46,10 +64,10 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(attrs['http_method'], 'GET')
 
     def test_borked_log_line(self):
-        self.assertIsNone(parse_nginx_timings(logging, BORKED))
+        self.assertIsNone(parse_nginx_timing(logging, BORKED))
 
     def test_skipped_line(self):
-        self.assertIsNone(parse_nginx_timings(logging, SKIPPED))
+        self.assertIsNone(parse_nginx_timing(logging, SKIPPED))
 
     def test_id_normalization(self):
         url = _sanitize_url(None, ID_NORMALIZE)
@@ -64,7 +82,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(attrs['url_group'], '/home/')
 
     def test_home_timings(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, HOME)
+        metric_name, timestamp, request_time, attrs = parse_nginx_timing(logging, HOME)
         self.assertEqual(metric_name, 'nginx.timings')
         self.assertEqual(request_time, 18.067)
         self.assertEqual(attrs['http_method'], 'GET')
@@ -72,19 +90,19 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
 
 
     def test_apdex_parser_satisfied(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, API)
+        metric_name, timestamp, apdex_score, attrs = prase_nginx_apdex(logging, API)
         self.assertEqual(apdex_score, 1)
 
     def test_apdex_parser_tolerating(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, TOLERATING)
+        metric_name, timestamp, apdex_score, attrs = prase_nginx_apdex(logging, TOLERATING)
         self.assertEqual(apdex_score, 0.5)
 
     def test_apdex_parser_unsatisfied(self):
-        metric_name, timestamp, apdex_score, attrs = parse_nginx_apdex(logging, UNSATISFIED)
+        metric_name, timestamp, apdex_score, attrs = prase_nginx_apdex(logging, UNSATISFIED)
         self.assertEqual(apdex_score, 0)
 
     def test_nginx_counter(self):
-        metric_name, timestamp, count, attrs = parse_nginx_apdex(logging, API)
+        metric_name, timestamp, count, attrs = prase_nginx_apdex(logging, API)
         self.assertEqual(count, 1)
 
     def test_parse_nginx_counter(self):
@@ -128,7 +146,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
                          "there needs to be a default: {}".format(pattern.pattern))
 
     def test_nginx_formplayer(self):
-        self.assertIsNotNone(parse_nginx_timings(logging, FORMPLAYER))
+        self.assertIsNotNone(parse_nginx_timing(logging, FORMPLAYER))
 
     def test_cache(self):
         metric_name, timestamp, count, attrs = parse_nginx_counter(logging, CACHE)
@@ -145,7 +163,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(attrs['cache_status'], '-')
 
     def test_referer(self):
-        metric_name, timestamp, request_time, attrs = parse_nginx_timings(logging, ICDS_DASHBOARD_WITH_REFER)
+        metric_name, timestamp, request_time, attrs = parse_nginx_timing(logging, ICDS_DASHBOARD_WITH_REFER)
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
         self.assertEqual(request_time, 0.242)
@@ -155,7 +173,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(attrs['http_method'], 'GET')
         self.assertEqual(attrs['referer_group'], 'icds_dashboard')
 
-        metric_name, timestamp, count, attrs = parse_nginx_timings(logging, ICDS_DASHBOARD_REFER_BLANK)
+        metric_name, timestamp, count, attrs = parse_nginx_timing(logging, ICDS_DASHBOARD_REFER_BLANK)
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2015, 10, 28, 15, 18, 14), 1446045494)
         self.assertEqual(request_time, 0.242)
@@ -166,7 +184,7 @@ class TestNginxTimingsParser(UnixTimestampTestMixin, unittest.TestCase):
         self.assertEqual(attrs['referer_group'], 'other')
 
     def test_url_with_spaces(self):
-        metric_name, timestamp, count, attrs = parse_nginx_timings(logging, URL_SPACES)
+        metric_name, timestamp, count, attrs = parse_nginx_timing(logging, URL_SPACES)
         self.assertEqual(metric_name, 'nginx.timings')
         self.assert_timestamp_equal(timestamp, datetime.datetime(2017, 9, 1, 7, 19, 9), 1504250349)
         self.assertEqual(count, 0.001)

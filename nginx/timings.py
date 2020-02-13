@@ -68,6 +68,7 @@ class LogDetails(namedtuple('LogDetails', 'timestamp, cache_status, http_method,
 WILDCARD = '*'
 APDEX_THRESHOLDS = (3, 12)
 
+
 def parse_logs(logger, line , *args):
     details = _get_log_details(logger, line)
     if not details:
@@ -76,12 +77,12 @@ def parse_logs(logger, line , *args):
     referer_group = _get_url_group(details.referer) if details.referer else 'unknown'
 
     return [
-        parse_nginx_counter(details, url_group, referer_group),
-        parse_nginx_apdex(details, url_group, referer_group),
-        parse_nginx_timings(details, url_group, referer_group )
+        get_nginx_counter_metric(details, url_group, referer_group),
+        get_nginx_apdex_metric(details, url_group, referer_group),
+        get_nginx_timing_metric(details, url_group, referer_group)
      ]
 
-def parse_nginx_apdex(details, url_group, referer_group):
+def get_nginx_apdex_metric(details, url_group, referer_group):
     if details.request_time > APDEX_THRESHOLDS[1]:
         # Unsatisfied
         apdex_score = 0
@@ -99,7 +100,7 @@ def parse_nginx_apdex(details, url_group, referer_group):
     )
 
 
-def parse_nginx_timings(details, url_group, referer_group):
+def get_nginx_timing_metric(details, url_group, referer_group):
     return 'nginx.timings', details.timestamp, details.request_time, details.to_tags(
         TIMING_TAGS,
         url_group=url_group,
@@ -108,7 +109,7 @@ def parse_nginx_timings(details, url_group, referer_group):
     )
 
 
-def parse_nginx_counter(details, url_group, referer_group):
+def get_nginx_counter_metric(details, url_group, referer_group):
     return 'nginx.requests', details.timestamp, 1, details.to_tags(
         REQUEST_TAGS,
         metric_type='counter',
