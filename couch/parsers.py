@@ -24,14 +24,33 @@ def parse_couch_logs(logger, line):
         logger.exception('Failed to parse log line')
         return None
 
-    return ('couch.timings', timestamp, request_seconds, {
+    return [
+        get_couch_timing_gauge(timestamp, url, database, http_method, status_code, couch_url, request_seconds),
+        get_couch_requests_counter(timestamp, url, database, http_method, status_code, couch_url, request_seconds)
+    ]
+
+
+def get_couch_timing_gauge(timestamp, url, database, http_method, status_code, couch_url, request_seconds):
+    return 'couch.timings', timestamp, request_seconds, {
         'metric_type': 'gauge',
         'url': url,
         'database': database,
         'http_method': http_method,
         'status_code': status_code,
         'couch_url': couch_url,
-    })
+    }
+
+
+def get_couch_requests_counter(timestamp, url, database, http_method, status_code, couch_url, request_seconds):
+    return 'couch.requests', timestamp, 1, {
+        'metric_type': 'counter',
+        'url': url,
+        'database': database,
+        'http_method': http_method,
+        'status_code': status_code,
+        'couch_url': couch_url,
+        'duration': get_duration_bucket(request_seconds),
+    }
 
 
 def _parse_line(line):
@@ -97,3 +116,16 @@ def _sanitize_domain(domain_username):
     stripped = domain_username[1:-1]  # strip off []
     username, domain = stripped.split(':')
     return domain
+
+
+def get_duration_bucket(duration_in_sec):
+    if duration_in_sec < 1:
+        return 'lt_001s'
+    elif duration_in_sec < 5:
+        return 'lt_005s'
+    elif duration_in_sec < 20:
+        return 'lt_020s'
+    elif duration_in_sec < 120:
+        return 'lt_120s'
+    else:
+        return 'over_120s'
