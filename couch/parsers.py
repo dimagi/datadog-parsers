@@ -19,21 +19,22 @@ def parse_couch_logs(logger, line):
         return None
 
     try:
-        timestamp, domain, url, database, http_method, status_code, couch_url, request_seconds = _parse_line(line)
+        timestamp, domain, url, task, database, http_method, status_code, couch_url, request_seconds = _parse_line(line)
     except Exception:
         logger.exception('Failed to parse log line')
         return None
 
     return [
-        get_couch_timing_gauge(timestamp, url, database, http_method, status_code, couch_url, request_seconds),
-        get_couch_requests_counter(timestamp, url, database, http_method, status_code, couch_url, request_seconds)
+        get_couch_timing_gauge(timestamp, url, task, database, http_method, status_code, couch_url, request_seconds),
+        get_couch_requests_counter(timestamp, url, task, database, http_method, status_code, couch_url, request_seconds)
     ]
 
 
-def get_couch_timing_gauge(timestamp, url, database, http_method, status_code, couch_url, request_seconds):
+def get_couch_timing_gauge(timestamp, url, task, database, http_method, status_code, couch_url, request_seconds):
     return 'couch.timings', timestamp, request_seconds, {
         'metric_type': 'gauge',
         'url': url,
+        'task': task,
         'database': database,
         'http_method': http_method,
         'status_code': status_code,
@@ -41,10 +42,11 @@ def get_couch_timing_gauge(timestamp, url, database, http_method, status_code, c
     }
 
 
-def get_couch_requests_counter(timestamp, url, database, http_method, status_code, couch_url, request_seconds):
+def get_couch_requests_counter(timestamp, url, task, database, http_method, status_code, couch_url, request_seconds):
     return 'couch.requests', timestamp, 1, {
         'metric_type': 'counter',
         'url': url,
+        'task': task,
         'database': database,
         'http_method': http_method,
         'status_code': status_code,
@@ -56,7 +58,11 @@ def get_couch_requests_counter(timestamp, url, database, http_method, status_cod
 def _parse_line(line):
     pieces = line.split()
     database = ''
-    if len(pieces) == 10:
+    task_name = ''
+    if len(pieces) == 11:
+        # celery task added: https://github.com/dimagi/commcare-hq/pull/29542
+        date1, date2, username_domain, url, task_name, database, http_method, status_code, content_length, couch_url, request_time = pieces
+    elif len(pieces) == 10:
         # database name added: https://github.com/dimagi/couchdbkit/pull/22
         date1, date2, username_domain, url, database, http_method, status_code, content_length, couch_url, request_time = pieces
     elif len(pieces) == 9:
@@ -74,7 +80,8 @@ def _parse_line(line):
     # Strip off first to letters which are [: and last letter which is a closing ]
     domain = _sanitize_domain(username_domain)
 
-    url = _sanitize_url(url)
+    if url and url != '-':
+        url = _sanitize_url(url)
     couch_url = _sanitize_couch_url(couch_url)
 
     if ":" in request_time:
@@ -83,7 +90,7 @@ def _parse_line(line):
     else:
         request_seconds = float(request_time)
 
-    return timestamp, domain, url, database, http_method, status_code, couch_url, request_seconds
+    return timestamp, domain, url, task_name, database, http_method, status_code, couch_url, request_seconds
 
 
 def _sanitize_url(url):
