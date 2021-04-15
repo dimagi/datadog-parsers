@@ -17,7 +17,7 @@ BORKED = 'Borked'
 class TestCouchLogParser(UnixTimestampTestMixin, unittest.TestCase):
 
     def _test_log_parsing(self, line, expected_timestamp, expected_request_time, expected_attrs):
-        metric_name, timestamp, request_time, attrs = parse_couch_logs(logging, line)
+        metric_name, timestamp, request_time, attrs = parse_couch_logs(logging, line)[0]
 
         expected_attrs.update({
             'metric_type': 'gauge',
