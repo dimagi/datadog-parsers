@@ -42,6 +42,7 @@ URL_PATTERN_GROUPS = [
     (re.compile(r'^/hq/multimedia/file/CommCareVideo/'), 'mm/video'),
     (re.compile(r'^/hq/multimedia/file/CommCareImage/'), 'mm/image'),
     (re.compile(r'^/hq/multimedia/file/'), 'mm/other'),
+    (re.compile(r'^/(?P<group_name>hq/[^/]+)'), None),
 ]
 
 MM_MAPPING = {
